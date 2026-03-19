@@ -1,141 +1,222 @@
-.page {
-  --background: #fafafa;
-  --foreground: #fff;
-
-  --text-primary: #000;
-  --text-secondary: #666;
-
-  --button-primary-hover: #383838;
-  --button-secondary-hover: #f2f2f2;
-  --button-secondary-border: #ebebeb;
-
-  display: flex;
-  min-height: 100vh;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-geist-sans);
-  background-color: var(--background);
-}
-
-.main {
-  display: flex;
-  min-height: 100vh;
+/* =========================================
+   CONTAINER PRINCIPAL
+========================================= */
+.container {
   width: 100%;
-  max-width: 800px;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: space-between;
-  background-color: var(--foreground);
-  padding: 120px 60px;
-}
-
-.intro {
+  max-width: 1100px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  text-align: left;
   gap: 24px;
 }
 
-.intro h1 {
-  max-width: 320px;
-  font-size: 40px;
-  font-weight: 600;
-  line-height: 48px;
-  letter-spacing: -2.4px;
-  text-wrap: balance;
-  color: var(--text-primary);
+/* =========================================
+   ESTRUTURA: HEADER & FOOTER
+========================================= */
+.header, .footer {
+  background: var(--surface); /* Consumindo do globals.css */
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
-.intro p {
-  max-width: 440px;
-  font-size: 18px;
-  line-height: 32px;
-  text-wrap: balance;
-  color: var(--text-secondary);
-}
-
-.intro a {
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.ctas {
+.headerTop {
   display: flex;
-  flex-direction: row;
-  width: 100%;
-  max-width: 440px;
+  justify-content: space-between;
+  align-items: flex-start;
   gap: 16px;
-  font-size: 14px;
 }
 
-.ctas a {
+.title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  margin: 0 0 8px 0;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  color: var(--muted);
+  font-size: 1rem;
+  margin: 0;
+}
+
+.subtitle b {
+  color: var(--text);
+}
+
+/* =========================================
+   BARRA DE AÇÕES E PERFIL
+========================================= */
+.actionBar {
   display: flex;
-  justify-content: center;
+  flex-wrap: wrap;
+  justify-content: flex-end; /* Focado apenas nos links úteis, como ajustamos no page.tsx */
   align-items: center;
-  height: 40px;
-  padding: 0 16px;
-  border-radius: 128px;
-  border: 1px solid transparent;
-  transition: 0.2s;
-  cursor: pointer;
-  width: fit-content;
-  font-weight: 500;
+  gap: 16px;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
 }
 
-a.primary {
-  background: var(--text-primary);
-  color: var(--background);
+.userGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+
+.textLink {
+  color: var(--accent); /* Usando o azul padrão do seu tema */
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 0.95rem;
+  padding: 8px 0; /* Aumenta a área de toque no mobile */
+}
+
+.noDecor {
+  text-decoration: none;
+}
+
+/* =========================================
+   GRID DE CARDS (OPERAÇÃO PWA)
+========================================= */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  text-decoration: none;
+  color: var(--text);
+  transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease, background-color 0.3s ease;
+  min-height: 280px;
+}
+
+.card:active {
+  transform: scale(0.97); /* Feedback imediato ao toque do motorista */
+}
+
+@media (hover: hover) {
+  .card:hover {
+    border-color: var(--accent);
+    box-shadow: var(--shadow);
+  }
+}
+
+.cardImg {
+  position: relative;
+  width: 100%;
+  height: 140px;
+  background-color: var(--surface2); /* Fundo sutil para a imagem */
+  border-bottom: 1px solid var(--border);
+}
+
+.cardContent {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.kicker {
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--accent); /* Destaque para o passo (Ex: PASSO 1) */
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+}
+
+.cardTitle {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 6px 0;
+  color: var(--text);
+}
+
+.cardDesc {
+  font-size: 0.9rem;
+  color: var(--muted);
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* =========================================
+   FOOTER ACTIONS E RESUMO
+========================================= */
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+}
+
+.flowPills {
+  display: flex;
   gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
 }
 
-a.secondary {
-  border-color: var(--button-secondary-border);
+.footerActions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
-/* Enable hover only on non-touch devices */
-@media (hover: hover) and (pointer: fine) {
-  a.primary:hover {
-    background: var(--button-primary-hover);
-    border-color: transparent;
-  }
-
-  a.secondary:hover {
-    background: var(--button-secondary-hover);
-    border-color: transparent;
-  }
+/* Botões robustos para operação tátil */
+.btnPrimary, .btnSecondary {
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  transition: transform 120ms ease, opacity 0.2s;
 }
 
-@media (max-width: 600px) {
-  .main {
-    padding: 48px 24px;
-  }
-
-  .intro {
-    gap: 16px;
-  }
-
-  .intro h1 {
-    font-size: 32px;
-    line-height: 40px;
-    letter-spacing: -1.92px;
-  }
+.btnPrimary {
+  background: var(--accentBg);
+  color: var(--accent);
+  border: 1px solid var(--accent);
 }
 
-@media (prefers-color-scheme: dark) {
-  .logo {
-    filter: invert();
-  }
+.btnSecondary {
+  background: var(--glass-bg);
+  color: var(--text);
+  border: 1px solid var(--glass-border);
+}
 
-  .page {
-    --background: #000;
-    --foreground: #000;
+.btnPrimary:active, .btnSecondary:active {
+  transform: scale(0.96);
+  opacity: 0.8;
+}
 
-    --text-primary: #ededed;
-    --text-secondary: #999;
+/* =========================================
+   AJUSTES NAS PILLS ESPECÍFICAS DA HOME
+========================================= */
+.pillAction {
+  cursor: pointer;
+  background: var(--glass-bg);
+  transition: opacity 0.2s;
+}
+.pillAction:active {
+  opacity: 0.7;
+}
 
-    --button-primary-hover: #ccc;
-    --button-secondary-hover: #1a1a1a;
-    --button-secondary-border: #1a1a1a;
-  }
+.pillFlow {
+  background: var(--surface2);
+  color: var(--muted);
 }

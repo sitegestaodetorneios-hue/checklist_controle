@@ -23,20 +23,22 @@ export default function PerfilPage() {
   const [confirm, setConfirm] = useState("");
 
   const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState("");
+  const [msg, setMsg] = useState<{ text: string; type: "success" | "error" | "" }>({ text: "", type: "" });
 
-  async function salvar() {
-    setMsg("");
-    if (!current.trim()) return setMsg("Informe a senha atual.");
-    if (!next.trim() || next.trim().length < 6) return setMsg("A nova senha deve ter no mínimo 6 caracteres.");
-    if (next !== confirm) return setMsg("Confirmação não confere.");
-    if (next === current) return setMsg("A nova senha não pode ser igual à senha atual.");
+  async function salvar(e: React.FormEvent) {
+    e.preventDefault(); // Impede o reload da página pelo <form>
+    setMsg({ text: "", type: "" });
+
+    if (!current.trim()) return setMsg({ text: "❌ Informe a senha atual.", type: "error" });
+    if (!next.trim() || next.trim().length < 6) return setMsg({ text: "❌ A nova senha deve ter no mínimo 6 caracteres.", type: "error" });
+    if (next !== confirm) return setMsg({ text: "❌ As senhas não conferem.", type: "error" });
+    if (next === current) return setMsg({ text: "❌ A nova senha não pode ser igual à senha atual.", type: "error" });
 
     setLoading(true);
     try {
       const r = await fetch("/api/auth/change-password", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ current_password: current, new_password: next }),
       });
@@ -44,54 +46,100 @@ export default function PerfilPage() {
       const d = await safeJson(r);
       if (!r.ok) throw new Error(d?.error || "Falha ao alterar senha");
 
-      setMsg("✅ Senha alterada com sucesso.");
+      setMsg({ text: "✅ Senha alterada com sucesso!", type: "success" });
       setCurrent("");
       setNext("");
       setConfirm("");
-    } catch (e: any) {
-      setMsg(e?.message || "Erro");
+      
+      // Limpa a mensagem de sucesso após 4 segundos para a tela ficar limpa
+      setTimeout(() => setMsg({ text: "", type: "" }), 4000);
+      
+    } catch (err: any) {
+      setMsg({ text: `❌ ${err?.message || "Erro"}`, type: "error" });
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <main className="grid" style={{ paddingTop: 12 }}>
-      <div className="row">
-        <div>
-          <h1 className="h1">👤 Perfil</h1>
-          <div className="sub">Atualize sua senha com segurança.</div>
+    <main className="grid" style={{ gap: 24, padding: "16px 0 40px" }}>
+      {/* CABEÇALHO */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 16, justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div style={{ flex: "1 1 300px" }}>
+          <h1 className="h1">Perfil e Segurança</h1>
+          <p className="sub" style={{ marginTop: 4 }}>Atualize sua senha de acesso ao sistema.</p>
         </div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <Link href="/">Home</Link>
+        <div style={{ display: "flex", gap: 10 }}>
+          <Link href="/">
+            <Button variant="ghost">← Home</Button>
+          </Link>
         </div>
       </div>
 
-      <Card>
+      {/* FORMULÁRIO DE SENHA */}
+      <Card style={{ padding: 24 }}>
         <div className="cardKicker">Segurança</div>
-        <div className="cardTitle">Alterar senha</div>
-        <div className="divider" />
+        <div className="cardTitle">Alterar Senha</div>
+        <div className="divider" style={{ margin: "16px 0" }} />
 
-        <div className="grid" style={{ gap: 10 }}>
-          <Field label="Senha atual">
-            <Input type="password" value={current} onChange={(e) => setCurrent(e.target.value)} placeholder="••••••••" />
+        {/* Usando <form> para capturar o "Enter" do teclado mobile */}
+        <form onSubmit={salvar} className="grid" style={{ gap: 16 }}>
+          
+          <Field label="Senha Atual" htmlFor="current_pw">
+            <Input 
+              id="current_pw"
+              type="password" 
+              value={current} 
+              onChange={(e) => setCurrent(e.target.value)} 
+              placeholder="••••••••" 
+              required
+            />
           </Field>
 
-          <Field label="Nova senha" hint="Mínimo 6 caracteres">
-            <Input type="password" value={next} onChange={(e) => setNext(e.target.value)} placeholder="••••••••" />
+          <Field label="Nova Senha" hint="No mínimo 6 caracteres" htmlFor="new_pw">
+            <Input 
+              id="new_pw"
+              type="password" 
+              value={next} 
+              onChange={(e) => setNext(e.target.value)} 
+              placeholder="••••••••" 
+              required
+              minLength={6}
+            />
           </Field>
 
-          <Field label="Confirmar nova senha">
-            <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="••••••••" />
+          <Field label="Confirmar Nova Senha" htmlFor="confirm_pw">
+            <Input 
+              id="confirm_pw"
+              type="password" 
+              value={confirm} 
+              onChange={(e) => setConfirm(e.target.value)} 
+              placeholder="••••••••" 
+              required
+              minLength={6}
+            />
           </Field>
 
-          <div className="row" style={{ alignItems: "center", marginTop: 6 }}>
-            <Button variant="primary" onClick={salvar} disabled={loading}>
-              {loading ? "Salvando…" : "💾 Salvar nova senha"}
+          {/* BANNER DE MENSAGEM */}
+          {msg.text && (
+            <div style={{
+              padding: 12, borderRadius: 8, marginTop: 8,
+              background: msg.type === "success" ? "var(--glass-bg)" : "var(--dangerBg)", 
+              color: msg.type === "success" ? "var(--accent)" : "var(--danger)",
+              border: `1px solid ${msg.type === "success" ? "var(--accent)" : "var(--danger)"}`,
+              fontWeight: 600
+            }}>
+              {msg.text}
+            </div>
+          )}
+
+          {/* AÇÕES */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", marginTop: 8 }}>
+            <Button type="submit" variant="primary" disabled={loading} style={{ minWidth: 180 }}>
+              {loading ? "Salvando…" : "💾 Salvar Nova Senha"}
             </Button>
-            {msg ? <span style={{ color: "var(--muted)", fontSize: 13 }}>{msg}</span> : null}
           </div>
-        </div>
+        </form>
       </Card>
     </main>
   );

@@ -1,117 +1,125 @@
 import Link from "next/link";
+import Image from "next/image";
 import { CardLink, Pill } from "./components/ui";
 import { getCurrentUser } from "@/lib/currentUser";
+import styles from "./page.module.css";
 
 export default async function Home() {
-  const user = await getCurrentUser(); // ✅ server-side (cookies)
+  const user = await getCurrentUser();
   const isAdmin = user?.role === "admin_unit" || user?.role === "admin_global";
 
   return (
-    <main className="grid" style={{ paddingTop: 12 }}>
-      <section className="card" style={{ padding: 16 }}>
-        <div className="row">
+    <main className={styles.container}>
+      {/* HEADER PROFISSIONAL */}
+      <header className={styles.header}>
+        <div className={styles.headerTop}>
           <div>
-            <h1 className="h1">✅ Checklist Operacional</h1>
-            <div className="sub">
-              Experiência PWA focada em velocidade e zero erros: <b>turno</b>, <b>saída</b>, <b>retorno</b>.
-            </div>
+            <h1 className={styles.title}>Checklist Operacional</h1>
+            <p className={styles.subtitle}>
+              Experiência PWA focada em velocidade: <b>turno</b>, <b>saída</b>, <b>retorno</b>.
+            </p>
           </div>
+        </div>
 
-          {/* ✅ LINKS (condicionais por login/role) */}
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end", alignItems: "center" }}>
-            {user ? (
-              <>
-                <Link href="/perfil" style={{ textDecoration: "none" }}>
-                  <Pill>👤 Perfil</Pill>
-                </Link>
-                <Link href="/historico">📚 Pendencias Devoluções →</Link>
-                <Link href="/turno/historico">📚 Ver checklists</Link>
-
-                {isAdmin ? (
-                  <Link href="/admin/users" style={{ textDecoration: "none" }}>
-                    <Pill className="pillWarn">⚙️ Admin Users</Pill>
-                  </Link>
-                ) : null}
-              </>
-            ) : (
-              <Link href="/login" style={{ textDecoration: "none" }}>
-                <Pill className="pillWarn">🔐 Login</Pill>
+        {/* BARRA DE AÇÕES (Somente Links Úteis para a Operação) */}
+        <div className={styles.actionBar}>
+          <div className={styles.userGroup}>
+            <Link href="/turno/historico" className={styles.textLink}>
+              📚 Ver checklists
+            </Link>
+            <Link href="/historico" className={styles.textLink}>
+              📚 Pendências
+            </Link>
+            
+            {user && (
+              <Link href="/perfil" className={styles.noDecor}>
+                <Pill className={styles.pillAction}>
+                  👤 {user.nome || user.username || "Perfil"}
+                </Pill>
               </Link>
             )}
-
-            <Pill>🇧🇷 Horário SP</Pill>
-            <Pill>🔔 Push</Pill>
-            <Pill>📶 Funciona com sinal ruim</Pill>
+            
+            {isAdmin && (
+              <Link href="/admin/users" className={styles.noDecor}>
+                <Pill className={styles.pillWarn}>⚙️ Admin</Pill>
+              </Link>
+            )}
           </div>
         </div>
+      </header>
+
+      {/* GRID DE OPERAÇÃO - ALVOS DE TOQUE GRANDES */}
+      <section className={styles.grid}>
+        <CardLink href="/turno" className={styles.card}>
+          <div className={styles.cardImg}>
+            {/* O atributo 'sizes' é obrigatório para performance no Next.js Image com 'fill' */}
+            <Image 
+              src="/illustrations/shift.svg" 
+              alt="Início de Turno" 
+              fill 
+              style={{ objectFit: "cover" }} 
+              sizes="(max-width: 768px) 100vw, 33vw"
+              priority 
+            />
+          </div>
+          <div className={styles.cardContent}>
+            <span className={styles.kicker}>PASSO 1 • INÍCIO DE TURNO</span>
+            <h2 className={styles.cardTitle}>Fazer Checklist</h2>
+            <p className={styles.cardDesc}>Coletores • paleteiras • itens configurados</p>
+          </div>
+        </CardLink>
+
+        <CardLink href="/carros/saida" className={styles.card}>
+          <div className={styles.cardImg}>
+            <Image 
+              src="/illustrations/truck.svg" 
+              alt="Saída do Carro" 
+              fill 
+              style={{ objectFit: "cover" }} 
+              sizes="(max-width: 768px) 100vw, 33vw"
+            />
+          </div>
+          <div className={styles.cardContent}>
+            <span className={styles.kicker}>PASSO 2 • CARRO</span>
+            <h2 className={styles.cardTitle}>Registrar Saída</h2>
+            <p className={styles.cardDesc}>Paletes • paleteira • stretch/tubete</p>
+          </div>
+        </CardLink>
+
+        <CardLink href="/pendencias" className={styles.card}>
+          <div className={styles.cardImg}>
+            <Image 
+              src="/illustrations/return.svg" 
+              alt="Retorno" 
+              fill 
+              style={{ objectFit: "cover" }} 
+              sizes="(max-width: 768px) 100vw, 33vw"
+            />
+          </div>
+          <div className={styles.cardContent}>
+            <span className={styles.kicker}>PASSO 3 • RETORNO</span>
+            <h2 className={styles.cardTitle}>Pendências e Fechamento</h2>
+            <p className={styles.cardDesc}>Confirma devoluções • registra retorno</p>
+          </div>
+        </CardLink>
       </section>
 
-      <section className="gridCards">
-        <CardLink href="/turno" style={{ display: "block" }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/illustrations/shift.svg"
-            alt=""
-            style={{ width: "100%", height: 140, objectFit: "cover", borderRadius: 14, border: "1px solid rgba(255,255,255,0.08)" }}
-          />
-          <div style={{ marginTop: 12 }}>
-            <div className="cardKicker">Início de turno</div>
-            <div className="cardTitle">Fazer checklist</div>
-            <div className="cardDesc">Coletores • paleteiras • itens extras configurados pelo admin</div>
-          </div>
-        </CardLink>
-
-        <CardLink href="/carros/saida" style={{ display: "block" }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/illustrations/truck.svg"
-            alt=""
-            style={{ width: "100%", height: 140, objectFit: "cover", borderRadius: 14, border: "1px solid rgba(255,255,255,0.08)" }}
-          />
-          <div style={{ marginTop: 12 }}>
-            <div className="cardKicker">Carro</div>
-            <div className="cardTitle">Registrar saída</div>
-            <div className="cardDesc">Paletes carregados/vazios • paleteira • stretch/tubete</div>
-          </div>
-        </CardLink>
-
-        <CardLink href="/pendencias" style={{ display: "block" }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/illustrations/return.svg"
-            alt=""
-            style={{ width: "100%", height: 140, objectFit: "cover", borderRadius: 14, border: "1px solid rgba(255,255,255,0.08)" }}
-          />
-          <div style={{ marginTop: 12 }}>
-            <div className="cardKicker">Retorno</div>
-            <div className="cardTitle">Pendências e fechamento</div>
-            <div className="cardDesc">Confirma devoluções • registra retorno • fecha carregamento</div>
-          </div>
-        </CardLink>
-      </section>
-
-      <section className="card" style={{ padding: 16 }}>
-        <div className="row">
-          <div>
-            <div className="cardKicker">Fluxo</div>
-            <div style={{ marginTop: 6, display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <Pill>1) Turno</Pill>
-              <Pill>2) Saída</Pill>
-              <Pill>3) Retorno</Pill>
-              <Pill className="pillWarn">4) Pendências</Pill>
-            </div>
-          </div>
-
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            <Link href="/turno">Abrir turno →</Link>
-            <Link href="/carros/saida">Nova saída →</Link>
-
-            {user ? <Link href="/perfil">Perfil →</Link> : <Link href="/login">Login →</Link>}
-
-            {isAdmin ? <Link href="/admin/users">Admin Users →</Link> : null}
+      {/* FOOTER DE RESUMO */}
+      <footer className={styles.footer}>
+        <div className={styles.flowSection}>
+          <span className={styles.kicker}>RESUMO DO FLUXO</span>
+          <div className={styles.flowPills}>
+            <Pill className={styles.pillFlow}>1) Turno</Pill>
+            <Pill className={styles.pillFlow}>2) Saída</Pill>
+            <Pill className={styles.pillFlow}>3) Retorno</Pill>
+            <Pill className={styles.pillWarn}>4) Pendências</Pill>
           </div>
         </div>
-      </section>
+        <div className={styles.footerActions}>
+          <Link href="/turno" className={styles.btnPrimary}>Abrir turno →</Link>
+          <Link href="/carros/saida" className={styles.btnSecondary}>Nova saída →</Link>
+        </div>
+      </footer>
     </main>
   );
 }

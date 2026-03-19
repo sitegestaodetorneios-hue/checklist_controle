@@ -1,38 +1,30 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import RetornoClient from "./RetornoClient";
+import { Button } from "../../components/ui";
 
 export default function RetornoPage() {
   return (
-    <main style={{ padding: 16, maxWidth: 900, margin: "0 auto" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-        <div>
-          <h1 style={{ margin: 0 }}>↩️ Retorno</h1>
-          <div style={{ opacity: 0.8, marginTop: 4 }}>
+    <main className="grid" style={{ gap: 24, padding: "16px 0 40px" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 16, justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div style={{ flex: "1 1 300px" }}>
+          <h1 className="h1">↩️ Retorno do Veículo</h1>
+          <p className="sub" style={{ marginTop: 4 }}>
             Informe paletes, stretch e confirme devoluções para fechar o carregamento.
-          </div>
+          </p>
         </div>
-        <Link href="/pendencias" style={{ color: "#8ab4ff" }}>
-          ⬅ Pendências
-        </Link>
+        <div style={{ display: "flex", gap: 10 }}>
+          <Link href="/pendencias">
+            <Button variant="ghost">← Pendências</Button>
+          </Link>
+        </div>
       </div>
 
-      <Suspense
-        fallback={
-          <section
-            style={{
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.10)",
-              borderRadius: 14,
-              padding: 14,
-              marginTop: 14,
-              opacity: 0.85,
-            }}
-          >
-            Carregando retorno…
-          </section>
-        }
-      >
+      <Suspense fallback={
+        <div style={{ padding: 40, textAlign: "center", color: "var(--muted)", fontWeight: 600 }}>
+          Carregando dados do retorno...
+        </div>
+      }>
         <RetornoClient />
       </Suspense>
     </main>

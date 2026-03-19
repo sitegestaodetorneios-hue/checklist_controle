@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Button, Card, Field, Input, Textarea, Pill } from "../../components/ui";
 
 async function safeJson(res: Response) {
   try {
@@ -33,11 +34,11 @@ export default function RetornoClient() {
   const [obs, setObs] = useState<string>("");
 
   const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState("");
+  const [msg, setMsg] = useState<{ text: string; type: "error" | "success" | "warning" | "" }>({ text: "", type: "" });
 
   const sp = useSearchParams();
   const idParam = sp.get("id") || "";
-  const paletesParam = sp.get("paletes"); // vem da pendência
+  const paletesParam = sp.get("paletes");
 
   useEffect(() => {
     setCarregamentoId(idParam);
@@ -47,27 +48,27 @@ export default function RetornoClient() {
     if (paletesParam && /^\d+$/.test(paletesParam)) setQtdPaletesRetorno(paletesParam);
   }, [paletesParam]);
 
-  async function salvar() {
+  async function salvar(e: React.FormEvent) {
+    e.preventDefault();
     setLoading(true);
-    setMsg("");
+    setMsg({ text: "", type: "" });
+    
     try {
-      if (!carregamentoId) throw new Error("ID do carregamento ausente.");
+      if (!carregamentoId) throw new Error("ID do carregamento ausente na URL.");
 
-      const qtdPal =
-        qtdPaletesRetorno.trim() === "" ? null : Number(qtdPaletesRetorno.trim());
+      const qtdPal = qtdPaletesRetorno.trim() === "" ? null : Number(qtdPaletesRetorno.trim());
       if (qtdPal != null && (!Number.isFinite(qtdPal) || qtdPal < 0)) {
-        throw new Error("Qtd de paletes inválida.");
+        throw new Error("Quantidade de paletes inválida.");
       }
 
-      const qtdStr =
-        qtdStretchRetorno.trim() === "" ? null : Number(qtdStretchRetorno.trim());
+      const qtdStr = qtdStretchRetorno.trim() === "" ? null : Number(qtdStretchRetorno.trim());
       if (qtdStr != null && (!Number.isFinite(qtdStr) || qtdStr < 0)) {
-        throw new Error("Qtd de stretch inválida.");
+        throw new Error("Quantidade de stretch inválida.");
       }
 
       const r = await fetch("/api/carros/retorno", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
           carregamento_id: carregamentoId,
@@ -82,121 +83,135 @@ export default function RetornoClient() {
       const d = await safeJson(r);
       if (!r.ok) throw new Error(d?.error || "Falha ao salvar retorno");
 
-      setMsg(d.ok_final ? "✅ Retorno OK! Carregamento fechado." : "⚠️ Retorno registrado, ainda com pendências.");
-    } catch (e: any) {
-      setMsg(e?.message || "Erro");
+      if (d.ok_final) {
+        setMsg({ text: "✅ Retorno concluído! Carregamento FECHADO sem pendências.", type: "success" });
+      } else {
+        setMsg({ text: "⚠️ Retorno salvo, mas AINDA HÁ PENDÊNCIAS nesse carregamento.", type: "warning" });
+      }
+      
+    } catch (err: any) {
+      setMsg({ text: `❌ ${err?.message || "Erro"}`, type: "error" });
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <section style={card}>
-      <div style={{ opacity: 0.85, fontSize: 13 }}>Carregamento</div>
-      <div style={{ fontSize: 16, marginTop: 4, wordBreak: "break-word" }}>
-        {carregamentoId || "—"}
+    <Card style={{ padding: 24, maxWidth: 600, margin: "0 auto" }}>
+      
+      {/* IDENTIFICAÇÃO DO CARREGAMENTO */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
+        <div className="cardKicker">Vinculado a Pendência</div>
+        <div style={{ fontSize: "1.2rem", fontWeight: 700, wordBreak: "break-all", color: "var(--accent)" }}>
+          {carregamentoId ? `ID: ${carregamentoId}` : "ID não fornecido"}
+        </div>
       </div>
 
-      <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
-        <div>
-          <div style={{ opacity: 0.9, fontSize: 13, marginBottom: 6 }}>📦 Paletes no retorno</div>
-          <input
-            value={qtdPaletesRetorno}
-            onChange={(e) => setQtdPaletesRetorno(onlyDigits(e.target.value).slice(0, 4))}
-            placeholder="0"
-            inputMode="numeric"
-            style={inp}
-          />
-          <div style={{ fontSize: 12, opacity: 0.75, marginTop: 6 }}>
-            Quantidade total de paletes que voltou (carregados + vazios).
+      <div className="divider" style={{ margin: "16px 0" }} />
+
+      <form onSubmit={salvar} className="grid" style={{ gap: 24 }}>
+        
+        {/* BLOCO QUANTIDADES */}
+        <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
+          <Field label="📦 Paletes Retornados" hint="Total (carregados + vazios)">
+            <Input
+              value={qtdPaletesRetorno}
+              onChange={(e) => setQtdPaletesRetorno(onlyDigits(e.target.value).slice(0, 4))}
+              placeholder="0"
+              inputMode="numeric"
+              required
+            />
+          </Field>
+
+          <Field label="🧻 Stretch / Tubetes" hint="Quantos retornaram?">
+            <Input
+              value={qtdStretchRetorno}
+              onChange={(e) => setQtdStretchRetorno(onlyDigits(e.target.value).slice(0, 4))}
+              placeholder="0"
+              inputMode="numeric"
+              required
+            />
+          </Field>
+        </div>
+
+        {/* BLOCO EQUIPAMENTOS (TOGGLES DE DEVOLUÇÃO) */}
+        <div className="grid" style={{ gap: 16 }}>
+          <div style={{ padding: 16, background: "var(--surface2)", borderRadius: "var(--radius)", border: "1px solid var(--border)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontWeight: 700, flex: 1, color: "var(--text)" }}>Paleteira(s) Devolvida(s)?</span>
+              <button
+                type="button"
+                onClick={() => setPaleteiraDevolvida(!paleteiraDevolvida)}
+                style={{
+                  padding: "10px 16px", borderRadius: "8px", fontWeight: 700, cursor: "pointer", border: "none",
+                  background: paleteiraDevolvida ? "#dcfce7" : "var(--dangerBg)",
+                  color: paleteiraDevolvida ? "#166534" : "var(--danger)", transition: "0.2s"
+                }}
+              >
+                {paleteiraDevolvida ? "✅ Sim (OK)" : "❌ Não Voltou"}
+              </button>
+            </div>
+          </div>
+
+          <div style={{ padding: 16, background: "var(--surface2)", borderRadius: "var(--radius)", border: "1px solid var(--border)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, color: "var(--text)" }}>Tubete Devolvido?</div>
+                <div style={{ fontSize: "0.8rem", color: "var(--muted)" }}>(Apenas se saiu com Stretch)</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTubeteDevolvido(!tubeteDevolvido)}
+                style={{
+                  padding: "10px 16px", borderRadius: "8px", fontWeight: 700, cursor: "pointer", border: "none",
+                  background: tubeteDevolvido ? "#dcfce7" : "var(--dangerBg)",
+                  color: tubeteDevolvido ? "#166534" : "var(--danger)", transition: "0.2s"
+                }}
+              >
+                {tubeteDevolvido ? "✅ Sim (OK)" : "❌ Faltou"}
+              </button>
+            </div>
           </div>
         </div>
 
-        <div>
-          <div style={{ opacity: 0.9, fontSize: 13, marginBottom: 6 }}>🧻 Stretch no retorno</div>
-          <input
-            value={qtdStretchRetorno}
-            onChange={(e) => setQtdStretchRetorno(onlyDigits(e.target.value).slice(0, 4))}
-            placeholder="0"
-            inputMode="numeric"
-            style={inp}
+        {/* BLOCO OBSERVAÇÕES */}
+        <Field label="Observações de Retorno" hint="Avarias, motivos de falta, etc.">
+          <Textarea
+            value={obs}
+            onChange={(e) => setObs(e.target.value)}
+            placeholder="Opcional..."
+            rows={3}
           />
-          <div style={{ fontSize: 12, opacity: 0.75, marginTop: 6 }}>
-            Informe quantos tubetes/stretch retornaram (se saiu com stretch).
+        </Field>
+
+        {/* FEEDBACK MENSAGENS */}
+        {msg.text && (
+          <div style={{
+            padding: 16, borderRadius: 8, 
+            background: msg.type === "success" ? "var(--glass-bg)" : msg.type === "warning" ? "var(--warnBg)" : "var(--dangerBg)", 
+            color: msg.type === "success" ? "var(--accent)" : msg.type === "warning" ? "var(--warnText)" : "var(--danger)",
+            border: `1px solid ${msg.type === "success" ? "var(--accent)" : msg.type === "warning" ? "var(--warnBorder)" : "var(--danger)"}`,
+            fontWeight: 600, textAlign: "center", lineHeight: 1.4
+          }}>
+            {msg.text}
           </div>
+        )}
+
+        {/* AÇÕES FINAIS */}
+        <div className="divider" style={{ margin: "8px 0" }} />
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
+          <Link href="/carros/saida" style={{ textDecoration: "none" }}>
+            <Button type="button" variant="ghost" style={{ color: "var(--accent)" }}>
+              + Nova Saída
+            </Button>
+          </Link>
+
+          <Button type="submit" variant="primary" disabled={loading || !carregamentoId} style={{ minWidth: 200, minHeight: 52, fontSize: "1.05rem" }}>
+            {loading ? "Processando..." : "💾 Salvar Retorno"}
+          </Button>
         </div>
 
-        <label style={lbl}>
-          <input
-            type="checkbox"
-            checked={paleteiraDevolvida}
-            onChange={(e) => setPaleteiraDevolvida(e.target.checked)}
-          />
-          Paleteira devolvida
-        </label>
-
-        <label style={lbl}>
-          <input
-            type="checkbox"
-            checked={tubeteDevolvido}
-            onChange={(e) => setTubeteDevolvido(e.target.checked)}
-          />
-          Tubete devolvido (se usou stretch)
-        </label>
-
-        <textarea
-          value={obs}
-          onChange={(e) => setObs(e.target.value)}
-          placeholder="Observações (opcional)"
-          rows={3}
-          style={inp}
-        />
-      </div>
-
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginTop: 12 }}>
-        <button onClick={salvar} disabled={loading} style={btn}>
-          {loading ? "Salvando…" : "💾 Salvar retorno"}
-        </button>
-
-        <Link href="/carros/saida" style={{ color: "#8ab4ff" }}>
-          + Nova saída
-        </Link>
-
-        {msg ? <span style={{ opacity: 0.9 }}>{msg}</span> : null}
-      </div>
-    </section>
+      </form>
+    </Card>
   );
 }
-
-const card: React.CSSProperties = {
-  background: "rgba(255,255,255,0.06)",
-  border: "1px solid rgba(255,255,255,0.10)",
-  borderRadius: 14,
-  padding: 14,
-  marginTop: 14,
-};
-
-const lbl: React.CSSProperties = {
-  display: "flex",
-  gap: 8,
-  alignItems: "center",
-  opacity: 0.9,
-};
-
-const inp: React.CSSProperties = {
-  width: "100%",
-  padding: 10,
-  borderRadius: 10,
-  border: "1px solid rgba(255,255,255,0.14)",
-  background: "rgba(0,0,0,0.25)",
-  color: "inherit",
-};
-
-const btn: React.CSSProperties = {
-  cursor: "pointer",
-  padding: "10px 14px",
-  borderRadius: 12,
-  border: "1px solid rgba(255,255,255,0.14)",
-  background: "rgba(138,180,255,0.20)",
-  color: "inherit",
-};

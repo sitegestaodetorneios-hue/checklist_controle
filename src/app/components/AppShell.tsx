@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+// Removi o import do Image do next/image, já que voltamos para a tag <img> nativa.
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import PushRegister from "./PushRegister";
@@ -24,6 +25,56 @@ type Me = {
   ok?: boolean;
   user?: { username?: string; nome?: string; role?: string };
 };
+
+// ✅ Componente de Troca de Tema corrigido (Regras dos Hooks aplicadas)
+function ThemeToggle() {
+  const [isDark, setIsDark] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  // O useEffect DEVE vir antes de qualquer 'return' condicional
+  useEffect(() => {
+    setMounted(true);
+    const savedTheme = localStorage.getItem("app-theme");
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    
+    if (savedTheme === "dark" || (!savedTheme && prefersDark)) {
+      setIsDark(true);
+      document.documentElement.setAttribute("data-theme", "dark");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = !isDark;
+    setIsDark(newTheme);
+    document.documentElement.setAttribute("data-theme", newTheme ? "dark" : "light");
+    localStorage.setItem("app-theme", newTheme ? "dark" : "light");
+  };
+
+  // ✅ O return de segurança (hidratação) só pode acontecer AQUI, depois de todos os hooks
+  if (!mounted) return <div style={{ width: 36, height: 36 }} />; 
+
+  return (
+    <button 
+      onClick={toggleTheme} 
+      aria-label="Alternar tema"
+      style={{
+        background: "var(--glass-bg)",
+        border: "1px solid var(--glass-border)",
+        color: "var(--text)",
+        width: 36,
+        height: 36,
+        borderRadius: "50%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: "pointer",
+        fontSize: "16px"
+      }}
+    >
+      {isDark ? "☀️" : "🌙"}
+    </button>
+  );
+}
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -66,9 +117,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div className="topbarInner">
           <div className="brand">
             <div className="brandLogo" aria-hidden>
-              {/* Logo (se existir) */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/brand/ativa.png" alt="" style={{ width: 26, height: 26, objectFit: "contain" }} />
+              {/* ✅ Tag img nativa restaurada corretamente */}
+              <img 
+                src="/brand/ativa.png" 
+                alt="Logo Ativa" 
+                style={{ width: 26, height: 26, objectFit: "contain" }} 
+              />
             </div>
             <div>
               <div className="brandTitle">Checklist</div>
@@ -77,14 +131,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="topActions">
-            <div style={{ minWidth: 220 }}>
+            <ThemeToggle />
+
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <PushRegister />
             </div>
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 13, color: "var(--muted)" }}>{me?.user?.nome || me?.user?.username || ""}</div>
-              {isAdmin ? <div style={{ fontSize: 12, color: "var(--muted2)" }}>Admin</div> : null}
+
+            <div style={{ textAlign: "right", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+              <div style={{ fontSize: 13, color: "var(--muted)", fontWeight: 600 }}>
+                {me?.user?.nome || me?.user?.username || ""}
+              </div>
+              {isAdmin && <div style={{ fontSize: 11, color: "var(--accent)" }}>Admin</div>}
             </div>
-            <Button variant="ghost" onClick={logout} aria-label="Sair">
+
+            <Button variant="ghost" onClick={logout} aria-label="Sair" style={{ padding: "8px" }}>
               Sair
             </Button>
           </div>
@@ -109,8 +169,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 function NavLink({ href, label, active, icon }: { href: string; label: string; active?: boolean; icon: React.ReactNode }) {
   return (
     <Link href={href} className={`navItem ${active ? "navItemActive" : ""}`}>
-      <span style={{ display: "inline-flex", opacity: active ? 1 : 0.9 }}>{icon}</span>
-      <span className="navLabel">{label}</span>
+      <span style={{ display: "inline-flex", opacity: active ? 1 : 0.6, transform: active ? "scale(1.1)" : "scale(1)", transition: "0.2s" }}>
+        {icon}
+      </span>
+      <span className="navLabel" style={{ fontWeight: active ? 700 : 500 }}>{label}</span>
     </Link>
   );
 }

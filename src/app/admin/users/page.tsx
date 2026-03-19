@@ -33,7 +33,7 @@ type U = {
 
 export default function AdminUsersPage() {
   const [rows, setRows] = useState<U[]>([]);
-  const [msg, setMsg] = useState("");
+  const [msg, setMsg] = useState<{ text: string; type: "success" | "error" | "info" | "" }>({ text: "", type: "" });
   const [loading, setLoading] = useState(true);
 
   // create form
@@ -46,9 +46,16 @@ export default function AdminUsersPage() {
   // reset password feedback
   const [tempPass, setTempPass] = useState<{ username: string; temp: string } | null>(null);
 
+  function showMessage(text: string, type: "success" | "error" | "info") {
+    setMsg({ text, type });
+    if (type === "success") {
+      setTimeout(() => setMsg({ text: "", type: "" }), 5000);
+    }
+  }
+
   async function load() {
     setLoading(true);
-    setMsg("");
+    setMsg({ text: "", type: "" });
     setTempPass(null);
     try {
       const r = await fetch("/api/admin/users/list", { credentials: "include", cache: "no-store" });
@@ -56,7 +63,7 @@ export default function AdminUsersPage() {
       if (!r.ok) throw new Error(d?.error || "Falha ao carregar");
       setRows(d.rows || []);
     } catch (e: any) {
-      setMsg(e?.message || "Erro");
+      showMessage(e?.message || "Erro ao carregar", "error");
       setRows([]);
     } finally {
       setLoading(false);
@@ -64,7 +71,6 @@ export default function AdminUsersPage() {
   }
 
   async function savePrefs(u: U) {
-    setMsg("");
     setTempPass(null);
     try {
       const r = await fetch("/api/admin/users/update", {
@@ -81,14 +87,13 @@ export default function AdminUsersPage() {
       });
       const d = await safeJson(r);
       if (!r.ok) throw new Error(d?.error || "Falha ao salvar");
-      setMsg(`✅ Salvo: ${u.username}`);
+      showMessage(`✅ Preferências salvas: ${u.username}`, "success");
     } catch (e: any) {
-      setMsg(e?.message || "Erro");
+      showMessage(e?.message || "Erro", "error");
     }
   }
 
   async function toggleAtivo(u: U, ativo: boolean) {
-    setMsg("");
     setTempPass(null);
     try {
       const r = await fetch("/api/admin/users/toggle", {
@@ -101,14 +106,13 @@ export default function AdminUsersPage() {
       if (!r.ok) throw new Error(d?.error || "Falha ao atualizar");
 
       setRows((prev) => prev.map((x) => (x.id === u.id ? { ...x, ativo } : x)));
-      setMsg(`✅ ${ativo ? "Ativado" : "Desativado"}: ${u.username}`);
+      showMessage(`✅ Usuário ${ativo ? "Ativado" : "Desativado"}: ${u.username}`, "success");
     } catch (e: any) {
-      setMsg(e?.message || "Erro");
+      showMessage(e?.message || "Erro", "error");
     }
   }
 
   async function resetPassword(u: U) {
-    setMsg("");
     setTempPass(null);
     try {
       const r = await fetch("/api/admin/users/reset-password", {
@@ -121,15 +125,15 @@ export default function AdminUsersPage() {
       if (!r.ok) throw new Error(d?.error || "Falha ao resetar senha");
 
       setTempPass({ username: d.username, temp: d.temp_password });
-      setMsg(`✅ Senha resetada: ${u.username}`);
+      showMessage(`✅ Senha resetada para: ${u.username}`, "success");
     } catch (e: any) {
-      setMsg(e?.message || "Erro");
+      showMessage(e?.message || "Erro", "error");
     }
   }
 
-  async function createUser() {
+  async function createUser(e: React.FormEvent) {
+    e.preventDefault();
     setCreating(true);
-    setMsg("");
     setTempPass(null);
     try {
       const r = await fetch("/api/admin/users/create", {
@@ -147,14 +151,14 @@ export default function AdminUsersPage() {
       const d = await safeJson(r);
       if (!r.ok) throw new Error(d?.error || "Falha ao criar usuário");
 
-      setMsg(`✅ Usuário criado: ${d.user.username}`);
+      showMessage(`✅ Usuário criado: ${d.user.username}`, "success");
       setNewUsername("");
       setNewNome("");
       setNewSenha("");
       setNewTurno("08:00");
       await load();
     } catch (e: any) {
-      setMsg(e?.message || "Erro");
+      showMessage(e?.message || "Erro", "error");
     } finally {
       setCreating(false);
     }
@@ -162,154 +166,181 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const activeCount = useMemo(() => rows.filter((r) => r.ativo).length, [rows]);
 
   return (
-    <main style={{ padding: 16, maxWidth: 1100, margin: "0 auto" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "flex-start" }}>
-        <div>
-          <h1 style={{ marginTop: 0, marginBottom: 6 }}>Admin • Usuários</h1>
-          <div style={{ opacity: 0.85 }}>
-            Crie usuários, defina turno e configure quem recebe notificação. Ativos: <b>{activeCount}</b> / {rows.length}
-          </div>
+    <main className="grid" style={{ gap: 24, padding: "16px 0 40px" }}>
+      
+      {/* CABEÇALHO */}
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
+        <div style={{ flex: "1 1 300px" }}>
+          <h1 className="h1">⚙️ Administração de Usuários</h1>
+          <p className="sub" style={{ marginTop: 4 }}>
+            Crie usuários, defina turnos e configure alertas. Ativos: <b>{activeCount}</b> / {rows.length}
+          </p>
         </div>
-
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <Button variant="ghost" onClick={load} disabled={loading}>
-            {loading ? "…" : "🔄 Atualizar"}
+          <Button variant="ghost" onClick={() => load()} disabled={loading}>
+            {loading ? "Atualizando…" : "🔄 Atualizar"}
           </Button>
-          <Link href="/" style={{ textDecoration: "none" }}>
-            <Button variant="ghost">Home</Button>
+          <Link href="/">
+            <Button variant="ghost">← Home</Button>
           </Link>
         </div>
       </div>
 
-      {msg ? (
-        <Card style={{ marginTop: 12, padding: 12 }}>
-          <div style={{ opacity: 0.95 }}>{msg}</div>
-          {tempPass ? (
-            <div style={{ marginTop: 8 }}>
-              <Pill className="pillWarn">Senha temporária</Pill>
-              <div style={{ marginTop: 6, fontSize: 14 }}>
-                <b>{tempPass.username}</b>: <span style={{ userSelect: "all" }}>{tempPass.temp}</span>
+      {/* FEEDBACK GLOBAL E SENHA TEMPORÁRIA */}
+      {msg.text && (
+        <Card style={{ 
+          padding: 16, 
+          background: msg.type === "success" ? "var(--glass-bg)" : "var(--dangerBg)", 
+          borderColor: msg.type === "success" ? "var(--accent)" : "var(--danger)" 
+        }}>
+          <div style={{ color: msg.type === "success" ? "var(--accent)" : "var(--danger)", fontWeight: 700 }}>
+            {msg.text}
+          </div>
+          
+          {tempPass && (
+            <div style={{ marginTop: 16, padding: 12, background: "var(--surface)", borderRadius: "var(--radius)", border: "1px solid var(--warnBorder)" }}>
+              <Pill className="pillWarn" style={{ marginBottom: 8 }}>⚠️ Senha Temporária Gerada</Pill>
+              <div style={{ fontSize: "1.1rem", color: "var(--text)" }}>
+                Usuário: <b>{tempPass.username}</b> <br/>
+                Senha: <b style={{ userSelect: "all", color: "var(--accent)", fontSize: "1.2rem", padding: "4px 8px", background: "var(--surface2)", borderRadius: 6 }}>{tempPass.temp}</b>
               </div>
-              <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>
-                Copie e repasse ao usuário. (Depois ele pode trocar se você implementar “alterar senha”.)
+              <div style={{ fontSize: "0.85rem", color: "var(--muted)", marginTop: 8 }}>
+                Copie a senha acima e envie ao operador. (Ele poderá alterar no próprio Perfil depois).
               </div>
             </div>
-          ) : null}
+          )}
         </Card>
-      ) : null}
+      )}
 
-      {/* Criar usuário */}
-      <Card style={{ marginTop: 12, padding: 14 }}>
+      {/* NOVO USUÁRIO */}
+      <Card style={{ padding: 20 }}>
         <div className="cardKicker">Cadastro</div>
-        <div className="cardTitle">Adicionar usuário</div>
-        <div className="divider" />
+        <div className="cardTitle">Adicionar Novo Operador</div>
+        <div className="divider" style={{ margin: "16px 0" }} />
 
-        <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
-          <Field label="Usuário (login)" hint="Ex: joao.silva">
-            <Input value={newUsername} onChange={(e) => setNewUsername(e.target.value)} placeholder="usuario" />
-          </Field>
-          <Field label="Nome" hint="Ex: João Silva">
-            <Input value={newNome} onChange={(e) => setNewNome(e.target.value)} placeholder="Nome completo" />
-          </Field>
-          <Field label="Senha inicial" hint="Admin define a primeira senha">
-            <Input value={newSenha} onChange={(e) => setNewSenha(e.target.value)} placeholder="****" type="password" />
-          </Field>
-          <Field label="Turno do usuário" hint="Usado no alerta 30 min após início">
-            <Select value={newTurno} onChange={(e) => setNewTurno(e.target.value as any)}>
-              <option value="08:00">08:00</option>
-              <option value="13:00">13:00</option>
-              <option value="23:00">23:00</option>
-            </Select>
-          </Field>
-        </div>
+        <form onSubmit={createUser} className="grid" style={{ gap: 16 }}>
+          <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
+            <Field label="Usuário (Login)" hint="Ex: joao.silva" htmlFor="newUser">
+              <Input id="newUser" value={newUsername} onChange={(e) => setNewUsername(e.target.value)} placeholder="usuario.login" autoCapitalize="none" required />
+            </Field>
+            
+            <Field label="Nome Completo" hint="Para exibição" htmlFor="newName">
+              <Input id="newName" value={newNome} onChange={(e) => setNewNome(e.target.value)} placeholder="João da Silva" required />
+            </Field>
+            
+            <Field label="Senha Inicial" hint="Definida pelo Admin" htmlFor="newPass">
+              <Input id="newPass" value={newSenha} onChange={(e) => setNewSenha(e.target.value)} placeholder="••••" type="password" required />
+            </Field>
+            
+            <Field label="Turno Padrão" hint="Usado para o Checklist">
+              <Select value={newTurno} onChange={(e) => setNewTurno(e.target.value as any)}>
+                <option value="08:00">08:00 (Manhã)</option>
+                <option value="13:00">13:00 (Tarde)</option>
+                <option value="23:00">23:00 (Noite)</option>
+              </Select>
+            </Field>
+          </div>
 
-        <div style={{ marginTop: 12 }}>
-          <Button variant="primary" onClick={createUser} disabled={creating || !newUsername.trim() || !newSenha.trim()}>
-            {creating ? "Criando…" : "➕ Criar usuário"}
-          </Button>
-        </div>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+            <Button type="submit" variant="primary" disabled={creating} style={{ minWidth: 200 }}>
+              {creating ? "Criando…" : "➕ Criar Usuário"}
+            </Button>
+          </div>
+        </form>
       </Card>
 
-      {/* Lista */}
-      <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+      {/* LISTA DE USUÁRIOS */}
+      <div className="grid" style={{ gap: 16 }}>
         {rows.map((u) => (
-          <Card key={u.id} style={{ padding: 14, opacity: u.ativo ? 1 : 0.65 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+          <Card key={u.id} style={{ padding: 20, opacity: u.ativo ? 1 : 0.75, border: !u.ativo ? "1px dashed var(--border)" : undefined }}>
+            
+            {/* Linha 1: Identificação */}
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                  <div style={{ fontSize: 16 }}>
-                    <b>{u.username}</b>{u.nome ? <span style={{ opacity: 0.85 }}> • {u.nome}</span> : null}
+                  <div style={{ fontSize: "1.2rem", color: "var(--text)" }}>
+                    <b>{u.username}</b> {u.nome && <span style={{ opacity: 0.7, fontWeight: 400 }}>• {u.nome}</span>}
                   </div>
-                  <Pill>{u.role}</Pill>
-                  {!u.ativo ? <Pill className="pillWarn">INATIVO</Pill> : null}
                 </div>
-
-                <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                  <Field label="Turno">
-                    <Select
-                      value={u.prefs.turno_default}
-                      onChange={(e) => {
-                        const v = e.target.value as any;
-                        setRows((prev) => prev.map((x) => (x.id === u.id ? { ...x, prefs: { ...x.prefs, turno_default: v } } : x)));
-                      }}
-                    >
-                      <option value="08:00">08:00</option>
-                      <option value="13:00">13:00</option>
-                      <option value="23:00">23:00</option>
-                    </Select>
-                  </Field>
-
-                  <label style={chk}>
-                    <input
-                      type="checkbox"
-                      checked={u.prefs.notify_enabled}
-                      onChange={(e) => setRows((prev) => prev.map((x) => (x.id === u.id ? { ...x, prefs: { ...x.prefs, notify_enabled: e.target.checked } } : x)))}
-                    />
-                    Notificações
-                  </label>
-
-                  <label style={chk}>
-                    <input
-                      type="checkbox"
-                      checked={u.prefs.notify_checklist}
-                      onChange={(e) => setRows((prev) => prev.map((x) => (x.id === u.id ? { ...x, prefs: { ...x.prefs, notify_checklist: e.target.checked } } : x)))}
-                    />
-                    Checklist
-                  </label>
-
-                  <label style={chk}>
-                    <input
-                      type="checkbox"
-                      checked={u.prefs.notify_pendencias}
-                      onChange={(e) => setRows((prev) => prev.map((x) => (x.id === u.id ? { ...x, prefs: { ...x.prefs, notify_pendencias: e.target.checked } } : x)))}
-                    />
-                    Pendências
-                  </label>
+                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                  <Pill>{u.role === "admin_unit" ? "⚙️ Admin" : "👤 Operador"}</Pill>
+                  {!u.ativo ? <Pill className="pillWarn">⛔ INATIVO</Pill> : <Pill style={{ background: "#dcfce7", color: "#166534", border: "none" }}>✅ ATIVO</Pill>}
                 </div>
               </div>
 
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                <Button variant="primary" onClick={() => savePrefs(u)}>💾 Salvar</Button>
-
-                <Button variant="ghost" onClick={() => resetPassword(u)}>
-                  🔑 Resetar senha
-                </Button>
-
+              {/* Ações Rápidas */}
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <Button variant="ghost" onClick={() => resetPassword(u)}>🔑 Resetar Senha</Button>
                 {u.ativo ? (
-                  <Button variant="danger" onClick={() => toggleAtivo(u, false)}>
-                    ⛔ Desativar
-                  </Button>
+                  <Button variant="danger" onClick={() => toggleAtivo(u, false)}>⛔ Desativar</Button>
                 ) : (
-                  <Button variant="primary" onClick={() => toggleAtivo(u, true)}>
-                    ✅ Ativar
-                  </Button>
+                  <Button variant="primary" onClick={() => toggleAtivo(u, true)}>✅ Ativar</Button>
                 )}
               </div>
+            </div>
+
+            <div className="divider" style={{ margin: "16px 0" }} />
+
+            {/* Linha 2: Configurações do Usuário */}
+            <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 20 }}>
+              
+              <Field label="Turno Base do Operador">
+                <Select
+                  value={u.prefs.turno_default}
+                  onChange={(e) => {
+                    const v = e.target.value as any;
+                    setRows((prev) => prev.map((x) => (x.id === u.id ? { ...x, prefs: { ...x.prefs, turno_default: v } } : x)));
+                  }}
+                >
+                  <option value="08:00">08:00</option>
+                  <option value="13:00">13:00</option>
+                  <option value="23:00">23:00</option>
+                </Select>
+              </Field>
+
+              {/* Toggles de Notificação */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ fontSize: 13, color: "var(--muted)", fontWeight: 600 }}>Notificações Push</div>
+                
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button
+                    onClick={() => setRows((prev) => prev.map((x) => (x.id === u.id ? { ...x, prefs: { ...x.prefs, notify_enabled: !x.prefs.notify_enabled } } : x)))}
+                    style={{ padding: "6px 12px", borderRadius: "8px", fontWeight: 600, border: "none", cursor: "pointer", fontSize: "0.85rem", transition: "0.2s", background: u.prefs.notify_enabled ? "var(--accent)" : "var(--glass-bg)", color: u.prefs.notify_enabled ? "#fff" : "var(--muted)" }}
+                  >
+                    Geral {u.prefs.notify_enabled ? "ON" : "OFF"}
+                  </button>
+                  
+                  <button
+                    onClick={() => setRows((prev) => prev.map((x) => (x.id === u.id ? { ...x, prefs: { ...x.prefs, notify_checklist: !x.prefs.notify_checklist } } : x)))}
+                    style={{ padding: "6px 12px", borderRadius: "8px", fontWeight: 600, border: "none", cursor: "pointer", fontSize: "0.85rem", transition: "0.2s", background: u.prefs.notify_checklist ? "var(--accent)" : "var(--glass-bg)", color: u.prefs.notify_checklist ? "#fff" : "var(--muted)" }}
+                    disabled={!u.prefs.notify_enabled}
+                  >
+                    Checklist {u.prefs.notify_checklist ? "ON" : "OFF"}
+                  </button>
+
+                  <button
+                    onClick={() => setRows((prev) => prev.map((x) => (x.id === u.id ? { ...x, prefs: { ...x.prefs, notify_pendencias: !x.prefs.notify_pendencias } } : x)))}
+                    style={{ padding: "6px 12px", borderRadius: "8px", fontWeight: 600, border: "none", cursor: "pointer", fontSize: "0.85rem", transition: "0.2s", background: u.prefs.notify_pendencias ? "var(--accent)" : "var(--glass-bg)", color: u.prefs.notify_pendencias ? "#fff" : "var(--muted)" }}
+                    disabled={!u.prefs.notify_enabled}
+                  >
+                    Pendências {u.prefs.notify_pendencias ? "ON" : "OFF"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Ação de Salvar Prefs */}
+              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "flex-end" }}>
+                <Button variant="ghost" onClick={() => savePrefs(u)} style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+                💾 Salvar Configurações
+                </Button>
+              </div>
+
             </div>
           </Card>
         ))}
@@ -317,5 +348,3 @@ export default function AdminUsersPage() {
     </main>
   );
 }
-
-const chk: React.CSSProperties = { display: "flex", gap: 6, alignItems: "center", opacity: 0.9 };

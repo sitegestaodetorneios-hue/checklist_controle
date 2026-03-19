@@ -9,7 +9,11 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0b0f1a",
+  // ✅ Agora o PWA entende modo claro e escuro na barra de status do celular
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f3f4f6" }, // Cinza bem claro
+    { media: "(prefers-color-scheme: dark)", color: "#0b0f1a" }   // O seu azul escuro
+  ],
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,

@@ -1,8 +1,11 @@
 import React from "react";
 
-type IconProps = { size?: number; className?: string };
+// ✅ Agora os ícones aceitam qualquer propriedade que um SVG normal aceitaria (style, color, stroke, etc)
+interface IconProps extends React.SVGProps<SVGSVGElement> {
+  size?: number | string;
+}
 
-function Svg({ children, size = 22, className }: React.PropsWithChildren<IconProps>) {
+function Svg({ children, size = 24, className, ...rest }: IconProps) {
   return (
     <svg
       width={size}
@@ -11,7 +14,8 @@ function Svg({ children, size = 22, className }: React.PropsWithChildren<IconPro
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
-      aria-hidden
+      aria-hidden="true"
+      {...rest}
     >
       {children}
     </svg>
