@@ -10,114 +10,147 @@ export default async function Home() {
 
   return (
     <main className={styles.container}>
-      {/* HEADER PROFISSIONAL */}
       <header className={styles.header}>
         <div className={styles.headerTop}>
           <div>
             <h1 className={styles.title}>Checklist Operacional</h1>
             <p className={styles.subtitle}>
-              Experiência PWA focada em velocidade: <b>turno</b>, <b>saída</b>, <b>retorno</b>.
+              Experiencia PWA focada em velocidade: <b>turno</b>, <b>saida</b>, <b>retorno</b> e <b>recebimento</b>.
             </p>
           </div>
         </div>
 
-        {/* BARRA DE AÇÕES (Somente Links Úteis para a Operação) */}
         <div className={styles.actionBar}>
           <div className={styles.userGroup}>
             <Link href="/turno/historico" className={styles.textLink}>
-              📚 Ver checklists
+              Ver checklists
             </Link>
             <Link href="/historico" className={styles.textLink}>
-              📚 Pendências
+              Pendencias
             </Link>
-            
+            <Link href="/recebimento" className={styles.textLink}>
+              Formulario recebimento
+            </Link>
+            <Link href="/recebimento/historico" className={styles.textLink}>
+              Historico recebimento
+            </Link>
+
             {user && (
               <Link href="/perfil" className={styles.noDecor}>
-                <Pill className={styles.pillAction}>
-                  👤 {user.nome || user.username || "Perfil"}
-                </Pill>
+                <Pill className={styles.pillAction}>{user.nome || user.username || "Perfil"}</Pill>
               </Link>
             )}
-            
+
             {isAdmin && (
               <Link href="/admin/users" className={styles.noDecor}>
-                <Pill className={styles.pillWarn}>⚙️ Admin</Pill>
+                <Pill className={styles.pillWarn}>Admin</Pill>
               </Link>
             )}
           </div>
         </div>
       </header>
 
-      {/* GRID DE OPERAÇÃO - ALVOS DE TOQUE GRANDES */}
       <section className={styles.grid}>
         <CardLink href="/turno" className={styles.card}>
           <div className={styles.cardImg}>
-            {/* O atributo 'sizes' é obrigatório para performance no Next.js Image com 'fill' */}
-            <Image 
-              src="/illustrations/shift.svg" 
-              alt="Início de Turno" 
-              fill 
-              style={{ objectFit: "cover" }} 
+            <Image
+              src="/illustrations/shift.svg"
+              alt="Inicio de Turno"
+              fill
+              style={{ objectFit: "cover" }}
               sizes="(max-width: 768px) 100vw, 33vw"
-              priority 
+              priority
             />
           </div>
           <div className={styles.cardContent}>
-            <span className={styles.kicker}>PASSO 1 • INÍCIO DE TURNO</span>
+            <span className={styles.kicker}>PASSO 1 - INICIO DE TURNO</span>
             <h2 className={styles.cardTitle}>Fazer Checklist</h2>
-            <p className={styles.cardDesc}>Coletores • paleteiras • itens configurados</p>
+            <p className={styles.cardDesc}>Coletores, paleteiras e itens configurados</p>
           </div>
         </CardLink>
 
         <CardLink href="/carros/saida" className={styles.card}>
           <div className={styles.cardImg}>
-            <Image 
-              src="/illustrations/truck.svg" 
-              alt="Saída do Carro" 
-              fill 
-              style={{ objectFit: "cover" }} 
+            <Image
+              src="/illustrations/truck.svg"
+              alt="Saida do Carro"
+              fill
+              style={{ objectFit: "cover" }}
               sizes="(max-width: 768px) 100vw, 33vw"
             />
           </div>
           <div className={styles.cardContent}>
-            <span className={styles.kicker}>PASSO 2 • CARRO</span>
-            <h2 className={styles.cardTitle}>Registrar Saída</h2>
-            <p className={styles.cardDesc}>Paletes • paleteira • stretch/tubete</p>
+            <span className={styles.kicker}>PASSO 2 - CARRO</span>
+            <h2 className={styles.cardTitle}>Registrar Saida</h2>
+            <p className={styles.cardDesc}>Paletes, paleteira e stretch/tubete</p>
           </div>
         </CardLink>
 
         <CardLink href="/pendencias" className={styles.card}>
           <div className={styles.cardImg}>
-            <Image 
-              src="/illustrations/return.svg" 
-              alt="Retorno" 
-              fill 
-              style={{ objectFit: "cover" }} 
+            <Image
+              src="/illustrations/return.svg"
+              alt="Retorno"
+              fill
+              style={{ objectFit: "cover" }}
               sizes="(max-width: 768px) 100vw, 33vw"
             />
           </div>
           <div className={styles.cardContent}>
-            <span className={styles.kicker}>PASSO 3 • RETORNO</span>
-            <h2 className={styles.cardTitle}>Pendências e Fechamento</h2>
-            <p className={styles.cardDesc}>Confirma devoluções • registra retorno</p>
+            <span className={styles.kicker}>PASSO 3 - RETORNO</span>
+            <h2 className={styles.cardTitle}>Pendencias e Fechamento</h2>
+            <p className={styles.cardDesc}>Confirma devolucoes e registra retorno</p>
+          </div>
+        </CardLink>
+
+        <CardLink href="/recebimento" className={styles.card}>
+          <div className={styles.cardImg}>
+            <Image
+              src="/illustrations/truck.svg"
+              alt="Formulario de recebimento"
+              fill
+              style={{ objectFit: "cover" }}
+              sizes="(max-width: 768px) 100vw, 33vw"
+            />
+          </div>
+          <div className={styles.cardContent}>
+            <span className={styles.kicker}>FORMULARIO OPERACIONAL</span>
+            <h2 className={styles.cardTitle}>Descarregamento / Recebimento</h2>
+            <p className={styles.cardDesc}>Planilha digital pronta para impressao com assinatura eletronica</p>
+          </div>
+        </CardLink>
+
+        <CardLink href="/recebimento/historico" className={styles.card}>
+          <div className={styles.cardImg}>
+            <Image
+              src="/illustrations/return.svg"
+              alt="Historico de recebimento"
+              fill
+              style={{ objectFit: "cover" }}
+              sizes="(max-width: 768px) 100vw, 33vw"
+            />
+          </div>
+          <div className={styles.cardContent}>
+            <span className={styles.kicker}>HISTORICO OPERACIONAL</span>
+            <h2 className={styles.cardTitle}>Formularios salvos</h2>
+            <p className={styles.cardDesc}>Reabra, continue preenchendo e reimprima com a mesma assinatura</p>
           </div>
         </CardLink>
       </section>
 
-      {/* FOOTER DE RESUMO */}
       <footer className={styles.footer}>
         <div className={styles.flowSection}>
           <span className={styles.kicker}>RESUMO DO FLUXO</span>
           <div className={styles.flowPills}>
             <Pill className={styles.pillFlow}>1) Turno</Pill>
-            <Pill className={styles.pillFlow}>2) Saída</Pill>
+            <Pill className={styles.pillFlow}>2) Saida</Pill>
             <Pill className={styles.pillFlow}>3) Retorno</Pill>
-            <Pill className={styles.pillWarn}>4) Pendências</Pill>
+            <Pill className={styles.pillWarn}>4) Recebimento</Pill>
           </div>
         </div>
         <div className={styles.footerActions}>
-          <Link href="/turno" className={styles.btnPrimary}>Abrir turno →</Link>
-          <Link href="/carros/saida" className={styles.btnSecondary}>Nova saída →</Link>
+          <Link href="/turno" className={styles.btnPrimary}>Abrir turno -&gt;</Link>
+          <Link href="/recebimento" className={styles.btnSecondary}>Novo formulario -&gt;</Link>
         </div>
       </footer>
     </main>
