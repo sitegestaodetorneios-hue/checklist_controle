@@ -41,6 +41,7 @@
   table-layout: fixed;
   color: #000;
   font-family: Arial, Helvetica, sans-serif;
+  background: #fff;
 }
 
 .sheetTable td,
@@ -49,6 +50,8 @@
   padding: 1px 2px;
   vertical-align: middle;
   white-space: pre-line;
+  background: #fff;
+  color: #000;
 }
 
 .rowTitle td {
@@ -268,8 +271,10 @@
     margin: 0 !important;
     padding: 0 !important;
     overflow: hidden !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+    background: #fff !important;
+    color: #000 !important;
+    -webkit-print-color-adjust: economy;
+    print-color-adjust: economy;
   }
 
   :global(.topbar),
@@ -282,6 +287,7 @@
     padding: 0 !important;
     margin: 0 !important;
     gap: 0 !important;
+    background: #fff !important;
   }
 
   .toolbar,
@@ -300,6 +306,7 @@
     page-break-inside: avoid !important;
     break-after: avoid-page !important;
     page-break-after: avoid !important;
+    background: #fff !important;
   }
 
   .sheetTable {
@@ -308,18 +315,24 @@
     table-layout: fixed;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
+    background: #fff !important;
+    color: #000 !important;
   }
 
   .sheetTable tr {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
+    background: #fff !important;
   }
 
   .sheetTable td,
   .sheetTable th {
-    border: 1px solid #000;
+    border: 1px solid #000 !important;
     padding: 0.3mm 0.55mm !important;
     vertical-align: middle !important;
+    background: #fff !important;
+    color: #000 !important;
+    box-shadow: none !important;
   }
 
   .rowTitle td {
@@ -343,12 +356,16 @@
     font-size: 9pt;
     line-height: 1.02;
     vertical-align: middle !important;
+    background: #fff !important;
+    color: #000 !important;
   }
 
   .codeCell {
     font-size: 6.5pt;
     line-height: 1.02;
     vertical-align: middle !important;
+    background: #fff !important;
+    color: #000 !important;
   }
 
   .rowMeta td {
@@ -360,10 +377,14 @@
     font-size: 5.8pt;
     line-height: 1;
     vertical-align: middle !important;
+    background: #fff !important;
+    color: #000 !important;
   }
 
   .valueMeta {
     vertical-align: middle !important;
+    background: #fff !important;
+    color: #000 !important;
   }
 
   .headerInput {
@@ -372,6 +393,8 @@
     line-height: 4.2mm;
     padding: 0;
     margin: 0;
+    background: transparent !important;
+    color: #000 !important;
   }
 
   .headerRow th {
@@ -380,12 +403,16 @@
     line-height: 1.02;
     padding: 0.25mm 0.45mm !important;
     vertical-align: middle !important;
+    background: #fff !important;
+    color: #000 !important;
   }
 
   .dataRow td {
     height: 4.65mm;
     padding: 0 0.45mm !important;
     vertical-align: middle !important;
+    background: #fff !important;
+    color: #000 !important;
   }
 
   .cellInput {
@@ -394,6 +421,8 @@
     line-height: 4mm;
     padding: 0;
     margin: 0;
+    background: transparent !important;
+    color: #000 !important;
   }
 
   .cellInput[type="time"] {
@@ -406,10 +435,14 @@
     line-height: 1.02;
     padding: 0.25mm 0.45mm !important;
     vertical-align: middle !important;
+    background: #fff !important;
+    color: #000 !important;
+    box-shadow: none !important;
   }
 
   .footerHead td {
     height: 5.3mm;
+    font-weight: 700;
   }
 
   .footerBody td {
@@ -423,9 +456,10 @@
     bottom: auto;
     width: 30mm;
     padding: 1.2mm 1.6mm;
-    border: 1px solid rgba(14, 116, 144, 0.22);
-    background: rgba(240, 249, 255, 0.92);
-    box-shadow: none;
+    border: 1px solid #000 !important;
+    background: #fff !important;
+    color: #000 !important;
+    box-shadow: none !important;
     opacity: 1;
     z-index: 5;
   }
@@ -433,17 +467,20 @@
   .signatureTitle {
     font-size: 4.6pt;
     line-height: 1.02;
+    color: #000 !important;
   }
 
   .signatureName {
     margin-top: 0.4mm;
     font-size: 5.8pt;
     line-height: 1.02;
+    color: #000 !important;
   }
 
   .signatureMeta {
     margin-top: 0.35mm;
     font-size: 4.6pt;
     line-height: 1.02;
+    color: #000 !important;
   }
 }
