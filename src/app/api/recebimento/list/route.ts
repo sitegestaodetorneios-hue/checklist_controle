@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/currentUser";
+import { getRecebimentoProgress, getRecebimentoStatusLabel } from "@/lib/recebimentoProgress";
 import { listRecebimentoForms } from "@/lib/recebimentoStorage";
 
 export async function GET() {
@@ -11,34 +12,41 @@ export async function GET() {
     const rows = await listRecebimentoForms(user.unidade_id);
     return NextResponse.json({
       ok: true,
-      rows: rows.map((row) => ({
-        id: row.id,
-        created_at: row.created_at,
-        updated_at: row.updated_at,
-        data_documento: row.data_documento,
-        equipe_responsavel: row.equipe_responsavel,
-        signature_name: row.signature_name,
-        created_by_username: row.created_by_username,
-        created_by_nome: row.created_by_nome,
-        total_linhas: row.rows.length,
-        total_preenchidas: row.rows.filter(
-          (item) =>
-            item.operacao ||
-            item.horarioChegada ||
-            item.nf ||
-            item.placa ||
-            item.conferente ||
-            item.cliente ||
-            item.quantidadeVolumes ||
-            item.peso ||
-            item.filial ||
-            item.doca ||
-            item.horaInicio ||
-            item.horaTermino
-        ).length,
-        primeira_nf: row.rows.find((item) => item.nf)?.nf || "",
-        primeira_placa: row.rows.find((item) => item.placa)?.placa || "",
-      })),
+      rows: rows.map((row) => {
+        const progress = getRecebimentoProgress(row.rows);
+
+        return {
+          total_linhas: progress.totalLinhas,
+          total_preenchidas: progress.totalPreenchidas,
+          is_empty_draft: progress.isEmptyDraft,
+          is_complete: progress.isComplete,
+          finalized_at: row.finalized_at,
+          finalized_reason: row.finalized_reason,
+          last_reopened_at:
+            row.reopen_events && row.reopen_events.length
+              ? row.reopen_events[row.reopen_events.length - 1].reopened_at
+              : null,
+          last_reopened_by_username:
+            row.reopen_events && row.reopen_events.length
+              ? row.reopen_events[row.reopen_events.length - 1].reopened_by_username
+              : "",
+          last_reopened_by_nome:
+            row.reopen_events && row.reopen_events.length
+              ? row.reopen_events[row.reopen_events.length - 1].reopened_by_nome
+              : "",
+          id: row.id,
+          created_at: row.created_at,
+          updated_at: row.updated_at,
+          data_documento: row.data_documento,
+          equipe_responsavel: row.equipe_responsavel,
+          signature_name: row.signature_name,
+          created_by_username: row.created_by_username,
+          created_by_nome: row.created_by_nome,
+          status_label: getRecebimentoStatusLabel(row),
+          primeira_nf: row.rows.find((item) => item.nf)?.nf || "",
+          primeira_placa: row.rows.find((item) => item.placa)?.placa || "",
+        };
+      }),
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Falha ao listar formularios";

@@ -6,6 +6,11 @@ export const metadata: Metadata = {
   title: "Checklist Turno",
   description: "Checklist premium de turno + pendências de retorno",
   manifest: "/manifest.webmanifest",
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+    apple: "/icon.svg",
+  },
 };
 
 export const viewport: Viewport = {

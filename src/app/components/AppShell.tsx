@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-// Removi o import do Image do next/image, já que voltamos para a tag <img> nativa.
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import PushRegister from "./PushRegister";
@@ -17,7 +16,7 @@ async function safeJson(res: Response) {
       return { error: text || `Erro ${res.status}` };
     }
   } catch {
-    return { error: "Falha de conexão" };
+    return { error: "Falha de conexao" };
   }
 }
 
@@ -26,17 +25,15 @@ type Me = {
   user?: { username?: string; nome?: string; role?: string };
 };
 
-// ✅ Componente de Troca de Tema corrigido (Regras dos Hooks aplicadas)
 function ThemeToggle() {
   const [isDark, setIsDark] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  // O useEffect DEVE vir antes de qualquer 'return' condicional
   useEffect(() => {
     setMounted(true);
     const savedTheme = localStorage.getItem("app-theme");
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    
+
     if (savedTheme === "dark" || (!savedTheme && prefersDark)) {
       setIsDark(true);
       document.documentElement.setAttribute("data-theme", "dark");
@@ -50,12 +47,11 @@ function ThemeToggle() {
     localStorage.setItem("app-theme", newTheme ? "dark" : "light");
   };
 
-  // ✅ O return de segurança (hidratação) só pode acontecer AQUI, depois de todos os hooks
-  if (!mounted) return <div style={{ width: 36, height: 36 }} />; 
+  if (!mounted) return <div style={{ width: 36, height: 36 }} />;
 
   return (
-    <button 
-      onClick={toggleTheme} 
+    <button
+      onClick={toggleTheme}
       aria-label="Alternar tema"
       style={{
         background: "var(--glass-bg)",
@@ -68,7 +64,7 @@ function ThemeToggle() {
         alignItems: "center",
         justifyContent: "center",
         cursor: "pointer",
-        fontSize: "16px"
+        fontSize: "16px",
       }}
     >
       {isDark ? "☀️" : "🌙"}
@@ -85,6 +81,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (isLogin) return;
+
     (async () => {
       try {
         const r = await fetch("/api/auth/me", { credentials: "include", cache: "no-store" });
@@ -117,11 +114,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div className="topbarInner">
           <div className="brand">
             <div className="brandLogo" aria-hidden>
-              {/* ✅ Tag img nativa restaurada corretamente */}
-              <img 
-                src="/brand/ativa.png" 
-                alt="Logo Ativa" 
-                style={{ width: 26, height: 26, objectFit: "contain" }} 
+              <img
+                src="/brand/ativa.png"
+                alt="Logo Ativa"
+                style={{ width: 26, height: 26, objectFit: "contain" }}
               />
             </div>
             <div>
@@ -137,11 +133,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <PushRegister />
             </div>
 
-            <div style={{ textAlign: "right", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+            <div
+              style={{
+                textAlign: "right",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
+              }}
+            >
               <div style={{ fontSize: 13, color: "var(--muted)", fontWeight: 600 }}>
                 {me?.user?.nome || me?.user?.username || ""}
               </div>
-              {isAdmin && <div style={{ fontSize: 11, color: "var(--accent)" }}>Admin</div>}
+              {isAdmin ? <div style={{ fontSize: 11, color: "var(--accent)" }}>Admin</div> : null}
             </div>
 
             <Button variant="ghost" onClick={logout} aria-label="Sair" style={{ padding: "8px" }}>
@@ -153,26 +156,67 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       <div className="container">{children}</div>
 
-      <nav className="bottomNav" aria-label="Navegação">
+      <nav className="bottomNav" aria-label="Navegacao">
         <div className="bottomNavInner">
           <NavLink href="/" label="Home" active={pathname === "/"} icon={<IconHome />} />
-          <NavLink href="/turno" label="Turno" active={pathname?.startsWith("/turno")} icon={<IconCheck />} />
-          <NavLink href="/carros/saida" label="Saída" active={pathname?.startsWith("/carros/saida")} icon={<IconTruck />} />
-          <NavLink href="/pendencias" label="Pendências" active={pathname?.startsWith("/pendencias")} icon={<IconAlert />} />
-          {isAdmin ? <NavLink href="/admin/users" label="Admin" active={pathname?.startsWith("/admin")} icon={<IconUserCog />} /> : null}
+          <NavLink
+            href="/turno"
+            label="Turno"
+            active={pathname?.startsWith("/turno")}
+            icon={<IconCheck />}
+          />
+          <NavLink
+            href="/carros/saida"
+            label="Saida"
+            active={pathname?.startsWith("/carros/saida")}
+            icon={<IconTruck />}
+          />
+          <NavLink
+            href="/pendencias"
+            label="Pendencias"
+            active={pathname?.startsWith("/pendencias")}
+            icon={<IconAlert />}
+          />
+          {isAdmin ? (
+            <NavLink
+              href="/admin/users"
+              label="Admin"
+              active={pathname?.startsWith("/admin")}
+              icon={<IconUserCog />}
+            />
+          ) : null}
         </div>
       </nav>
     </div>
   );
 }
 
-function NavLink({ href, label, active, icon }: { href: string; label: string; active?: boolean; icon: React.ReactNode }) {
+function NavLink({
+  href,
+  label,
+  active,
+  icon,
+}: {
+  href: string;
+  label: string;
+  active?: boolean;
+  icon: React.ReactNode;
+}) {
   return (
     <Link href={href} className={`navItem ${active ? "navItemActive" : ""}`}>
-      <span style={{ display: "inline-flex", opacity: active ? 1 : 0.6, transform: active ? "scale(1.1)" : "scale(1)", transition: "0.2s" }}>
+      <span
+        style={{
+          display: "inline-flex",
+          opacity: active ? 1 : 0.6,
+          transform: active ? "scale(1.1)" : "scale(1)",
+          transition: "0.2s",
+        }}
+      >
         {icon}
       </span>
-      <span className="navLabel" style={{ fontWeight: active ? 700 : 500 }}>{label}</span>
+      <span className="navLabel" style={{ fontWeight: active ? 700 : 500 }}>
+        {label}
+      </span>
     </Link>
   );
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/currentUser";
 import { getRecebimentoForm } from "@/lib/recebimentoStorage";
+import { getRecebimentoProgress, getRecebimentoStatusLabel } from "@/lib/recebimentoProgress";
 
 export async function GET(req: Request) {
   try {
@@ -15,7 +16,12 @@ export async function GET(req: Request) {
     const form = await getRecebimentoForm(user.unidade_id, formId);
     if (!form) return NextResponse.json({ error: "Formulario nao encontrado" }, { status: 404 });
 
-    return NextResponse.json({ ok: true, form });
+    return NextResponse.json({
+      ok: true,
+      form,
+      progress: getRecebimentoProgress(form.rows),
+      status_label: getRecebimentoStatusLabel(form),
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Falha ao abrir formulario";
     return NextResponse.json({ error: message }, { status: 500 });

@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/currentUser";
-import {
-  cleanupExpiredRecebimentoDrafts,
-  getRecebimentoForm,
-  saveRecebimentoForm,
-} from "@/lib/recebimentoStorage";
 import { getRecebimentoProgress, getRecebimentoStatusLabel } from "@/lib/recebimentoProgress";
+import { getRecebimentoForm, saveRecebimentoForm } from "@/lib/recebimentoStorage";
 import {
   RECEBIMENTO_MODEL_CODE,
   RECEBIMENTO_MODEL_VERSION,
@@ -57,16 +53,28 @@ export async function POST(req: Request) {
     const formId = cleanText(body?.id) || crypto.randomUUID();
     const now = new Date().toISOString();
 
-    await cleanupExpiredRecebimentoDrafts(user.unidade_id);
+    const existing = await getRecebimentoForm(user.unidade_id, formId);
 
-    let existing: RecebimentoFormRecord | null = null;
-
-    try {
-      existing = await getRecebimentoForm(user.unidade_id, formId);
-    } catch (error) {
-      console.warn("[recebimento/save] formulario novo ou falha ao ler existente:", error);
-      existing = null;
+    if (existing?.finalized_at) {
+      return NextResponse.json({
+        ok: true,
+        form: existing,
+        progress: getRecebimentoProgress(existing.rows),
+        status_label: getRecebimentoStatusLabel(existing),
+      });
     }
+
+    const rows = normalizeRows(body?.rows);
+    const progress = getRecebimentoProgress(rows);
+
+    if (progress.totalPreenchidas === 0) {
+      return NextResponse.json(
+        { error: "Preencha ao menos uma linha antes de concluir o formulario." },
+        { status: 400 }
+      );
+    }
+
+    const finalizerName = user.nome || user.username || "Usuario responsavel";
 
     const record: RecebimentoFormRecord = {
       id: formId,
@@ -74,46 +82,29 @@ export async function POST(req: Request) {
       created_by: existing?.created_by || user.id,
       created_by_username: existing?.created_by_username || user.username || "",
       created_by_nome: existing?.created_by_nome || user.nome || "",
-      signature_name:
-        existing?.signature_name || user.nome || user.username || "Usuario responsavel",
-      signed_at: existing?.signed_at || now,
+      signature_name: finalizerName,
+      signed_at: now,
       created_at: existing?.created_at || now,
       updated_at: now,
-      finalized_at: existing?.finalized_at || null,
-      finalized_by: existing?.finalized_by || null,
-      finalized_by_username: existing?.finalized_by_username || null,
-      finalized_by_nome: existing?.finalized_by_nome || null,
-      finalized_reason: existing?.finalized_reason || null,
+      finalized_at: now,
+      finalized_by: user.id,
+      finalized_by_username: user.username || "",
+      finalized_by_nome: user.nome || "",
+      finalized_reason: "manual",
       equipe_responsavel:
         cleanText(body?.equipeResponsavel) ||
         existing?.equipe_responsavel ||
         user.nome ||
         user.username ||
         "",
-      data_documento:
-        cleanText(body?.dataDocumento) ||
-        existing?.data_documento ||
-        "",
-      rows: normalizeRows(body?.rows),
+      data_documento: cleanText(body?.dataDocumento) || existing?.data_documento || "",
+      rows,
       reopen_events: existing?.reopen_events || [],
       model_code: RECEBIMENTO_MODEL_CODE,
       model_version: RECEBIMENTO_MODEL_VERSION,
     };
 
-    if (existing?.finalized_at) {
-      return NextResponse.json(
-        {
-          error: "Formulario ja concluido. Abra apenas para consulta ou reimpressao.",
-          form: existing,
-          progress: getRecebimentoProgress(existing.rows),
-          status_label: getRecebimentoStatusLabel(existing),
-        },
-        { status: 409 }
-      );
-    }
-
     await saveRecebimentoForm(record);
-    const progress = getRecebimentoProgress(record.rows);
 
     return NextResponse.json({
       ok: true,
@@ -123,9 +114,7 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Falha interna ao salvar formulario";
-
-    console.error("[recebimento/save] erro:", error);
+      error instanceof Error ? error.message : "Falha interna ao finalizar formulario";
 
     return NextResponse.json({ error: message }, { status: 500 });
   }

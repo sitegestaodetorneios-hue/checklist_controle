@@ -1,4 +1,9 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import {
+  isRecebimentoEmptyDraftExpired,
+  shouldAutoFinalizeRecebimento,
+  RECEBIMENTO_AUTO_FINALIZE_TTL_MS,
+} from "@/lib/recebimentoProgress";
 import type { RecebimentoFormRecord } from "@/lib/recebimentoTypes";
 
 const BUCKET_NAME = "recebimento-formularios";
@@ -114,7 +119,18 @@ async function readForm(path: string) {
 
 export async function getRecebimentoForm(unidadeId: string, formId: string) {
   const path = getFormPath(unidadeId, formId);
-  return readForm(path);
+  let form = await readForm(path);
+
+  if (form && isRecebimentoEmptyDraftExpired(form)) {
+    await deleteRecebimentoForm(unidadeId, formId);
+    return null;
+  }
+
+  if (form && shouldAutoFinalizeRecebimento(form)) {
+    form = await autoFinalizeRecebimentoForm(form);
+  }
+
+  return form;
 }
 
 export async function saveRecebimentoForm(record: RecebimentoFormRecord) {
@@ -145,7 +161,87 @@ export async function saveRecebimentoForm(record: RecebimentoFormRecord) {
   return { path };
 }
 
+export async function autoFinalizeRecebimentoForm(record: RecebimentoFormRecord) {
+  if (record.finalized_at) {
+    return record;
+  }
+
+  const finalizedAt = new Date(
+    new Date(record.updated_at).getTime() + RECEBIMENTO_AUTO_FINALIZE_TTL_MS
+  ).toISOString();
+
+  const nextRecord: RecebimentoFormRecord = {
+    ...record,
+    finalized_at: finalizedAt,
+    finalized_by: "system:auto-finalize",
+    finalized_by_username: "sistema",
+    finalized_by_nome: "Finalizacao automatica",
+    finalized_reason: "auto_inactive",
+    signed_at: record.signed_at || finalizedAt,
+  };
+
+  await saveRecebimentoForm(nextRecord);
+  return nextRecord;
+}
+
+export async function deleteRecebimentoForm(unidadeId: string, formId: string) {
+  await ensureBucket();
+
+  const path = getFormPath(unidadeId, formId);
+  const removed = await supabaseAdmin.storage.from(BUCKET_NAME).remove([path]);
+
+  if (removed.error) {
+    throw new Error(`Erro ao excluir arquivo ${path}: ${removed.error.message}`);
+  }
+}
+
+export async function cleanupExpiredRecebimentoDrafts(unidadeId: string) {
+  await ensureBucket();
+
+  const folder = getUnitFolder(unidadeId);
+  const listed = await supabaseAdmin.storage.from(BUCKET_NAME).list(folder, {
+    limit: 200,
+    offset: 0,
+    sortBy: { column: "updated_at", order: "desc" },
+  });
+
+  if (listed.error) {
+    throw new Error(`Erro ao listar formularios da unidade ${folder}: ${listed.error.message}`);
+  }
+
+  const files = (listed.data || []).filter((item) => item.name.endsWith(".json"));
+  const expiredPaths: string[] = [];
+
+  await Promise.all(
+    files.map(async (file) => {
+      const fullPath = `${folder}/${file.name}`;
+      let form = await readForm(fullPath);
+      if (form && isRecebimentoEmptyDraftExpired(form)) {
+        expiredPaths.push(fullPath);
+        return;
+      }
+
+      if (form && shouldAutoFinalizeRecebimento(form)) {
+        form = await autoFinalizeRecebimentoForm(form);
+      }
+    })
+  );
+
+  if (expiredPaths.length === 0) {
+    return { removed: 0 };
+  }
+
+  const removed = await supabaseAdmin.storage.from(BUCKET_NAME).remove(expiredPaths);
+
+  if (removed.error) {
+    throw new Error(`Erro ao excluir rascunhos expirados da unidade ${folder}: ${removed.error.message}`);
+  }
+
+  return { removed: expiredPaths.length };
+}
+
 export async function listRecebimentoForms(unidadeId: string) {
+  await cleanupExpiredRecebimentoDrafts(unidadeId);
   await ensureBucket();
 
   const folder = getUnitFolder(unidadeId);
@@ -164,8 +260,12 @@ export async function listRecebimentoForms(unidadeId: string) {
 
   const rows = await Promise.all(
     files.map(async (file) => {
-      const form = await readForm(`${folder}/${file.name}`);
+      const fullPath = `${folder}/${file.name}`;
+      let form = await readForm(fullPath);
       if (!form) return null;
+      if (shouldAutoFinalizeRecebimento(form)) {
+        form = await autoFinalizeRecebimentoForm(form);
+      }
       return form;
     })
   );

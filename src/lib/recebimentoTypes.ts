@@ -14,6 +14,14 @@ export type RecebimentoRow = {
   horaTermino: string;
 };
 
+export type RecebimentoReopenEvent = {
+  reopened_at: string;
+  reopened_by: string;
+  reopened_by_username: string;
+  reopened_by_nome: string;
+  confirmation_text: string;
+};
+
 export type RecebimentoFormRecord = {
   id: string;
   unidade_id: string;
@@ -24,9 +32,15 @@ export type RecebimentoFormRecord = {
   signed_at: string;
   created_at: string;
   updated_at: string;
+  finalized_at: string | null;
+  finalized_by: string | null;
+  finalized_by_username: string | null;
+  finalized_by_nome: string | null;
+  finalized_reason: "manual" | "auto_inactive" | null;
   equipe_responsavel: string;
   data_documento: string;
   rows: RecebimentoRow[];
+  reopen_events: RecebimentoReopenEvent[];
   model_code: string;
   model_version: string;
 };
