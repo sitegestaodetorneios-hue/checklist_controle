@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const path = req.nextUrl.pathname;
 
-  // ✅ nunca interceptar API
+  // Nunca interceptar API.
   if (path.startsWith("/api")) return NextResponse.next();
 
-  // ✅ público
+  // Rotas publicas.
   if (path.startsWith("/login")) return NextResponse.next();
 
-  // ✅ assets
+  // Assets estaticos.
   if (
     path.startsWith("/_next") ||
     path.startsWith("/icons") ||

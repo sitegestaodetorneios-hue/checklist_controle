@@ -1,164 +1,127 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import {
   isRecebimentoEmptyDraftExpired,
-  shouldAutoFinalizeRecebimento,
   RECEBIMENTO_AUTO_FINALIZE_TTL_MS,
+  shouldAutoFinalizeRecebimento,
 } from "@/lib/recebimentoProgress";
 import type { RecebimentoFormRecord } from "@/lib/recebimentoTypes";
 
-const BUCKET_NAME = "recebimento-formularios";
-let bucketReady: Promise<void> | null = null;
+const TABLE_NAME = "recebimento_forms";
 
-function sanitizeSegment(value: string) {
-  return String(value).replace(/[\\/?#%*:|"<>]/g, "-");
+function isMissingTableError(error: unknown) {
+  const err = error as { code?: string; message?: string; details?: string };
+  const code = String(err?.code || "").toLowerCase();
+  const message = String(err?.message || "").toLowerCase();
+  const details = String(err?.details || "").toLowerCase();
+
+  return (
+    code === "42p01" ||
+    code === "pgrst205" ||
+    message.includes("relation") ||
+    message.includes("does not exist") ||
+    message.includes("schema cache") ||
+    message.includes("could not find the table") ||
+    details.includes("does not exist")
+  );
 }
 
-function getFormPath(unidadeId: string, formId: string) {
-  const safeUnit = sanitizeSegment(unidadeId);
-  const safeForm = sanitizeSegment(formId);
-  return `${safeUnit}/${safeForm}.json`;
-}
+function formatTableError(action: string, error: unknown) {
+  const err = error as { message?: string };
 
-function getUnitFolder(unidadeId: string) {
-  return sanitizeSegment(unidadeId);
-}
-
-async function ensureBucket() {
-  if (!bucketReady) {
-    bucketReady = (async () => {
-      const list = await supabaseAdmin.storage.listBuckets();
-
-      if (list.error) {
-        throw new Error(`Erro ao listar buckets: ${list.error.message}`);
-      }
-
-      const exists = (list.data || []).some((bucket) => bucket.name === BUCKET_NAME);
-      if (exists) return;
-
-      const created = await supabaseAdmin.storage.createBucket(BUCKET_NAME, {
-        public: false,
-        allowedMimeTypes: ["application/json"],
-        fileSizeLimit: "2MB",
-      });
-
-      if (created.error) {
-        const msg = String(created.error.message || "");
-        const lower = msg.toLowerCase();
-
-        if (
-          !lower.includes("already exists") &&
-          !lower.includes("duplicate") &&
-          !lower.includes("exists")
-        ) {
-          throw new Error(`Erro ao criar bucket ${BUCKET_NAME}: ${msg}`);
-        }
-      }
-    })();
+  if (isMissingTableError(error)) {
+    return `Tabela ${TABLE_NAME} ausente. Execute a migracao do recebimento antes de ${action}.`;
   }
 
-  try {
-    await bucketReady;
-  } catch (error) {
-    bucketReady = null;
-    throw error;
+  return `Erro ao ${action} na tabela: ${err?.message || "falha desconhecida"}`;
+}
+
+function normalizeRecord(record: RecebimentoFormRecord): RecebimentoFormRecord {
+  return {
+    ...record,
+    finalized_at: record.finalized_at || null,
+    finalized_by: record.finalized_by || null,
+    finalized_by_username: record.finalized_by_username || null,
+    finalized_by_nome: record.finalized_by_nome || null,
+    finalized_reason: record.finalized_reason || (record.finalized_at ? "manual" : null),
+    reopen_events: Array.isArray(record.reopen_events) ? record.reopen_events : [],
+    rows: Array.isArray(record.rows) ? record.rows : [],
+  };
+}
+
+async function getTableForm(unidadeId: string, formId: string) {
+  const query = await supabaseAdmin
+    .from(TABLE_NAME)
+    .select("*")
+    .eq("unidade_id", unidadeId)
+    .eq("id", formId)
+    .maybeSingle();
+
+  if (query.error) {
+    throw new Error(formatTableError("ler formulario", query.error));
+  }
+
+  return query.data ? normalizeRecord(query.data as RecebimentoFormRecord) : null;
+}
+
+async function saveTableForm(record: RecebimentoFormRecord) {
+  const upsert = await supabaseAdmin.from(TABLE_NAME).upsert(record, { onConflict: "id" });
+
+  if (upsert.error) {
+    throw new Error(formatTableError("salvar formulario", upsert.error));
   }
 }
 
-async function readForm(path: string) {
-  await ensureBucket();
+async function listTableForms(unidadeId: string) {
+  const query = await supabaseAdmin
+    .from(TABLE_NAME)
+    .select("*")
+    .eq("unidade_id", unidadeId)
+    .order("updated_at", { ascending: false })
+    .limit(200);
 
-  const downloaded = await supabaseAdmin.storage.from(BUCKET_NAME).download(path);
-
-  if (downloaded.error) {
-    const err = downloaded.error as {
-      message?: string;
-      status?: number;
-      statusCode?: string | number;
-      code?: string;
-      error?: string;
-      name?: string;
-    };
-
-    const message = String(err.message || "").toLowerCase();
-    const code = String(err.code || err.error || err.name || "").toLowerCase();
-    const status = Number(err.status ?? err.statusCode ?? 0);
-
-    const isNotFound =
-      status === 404 ||
-      code.includes("nosuchkey") ||
-      code.includes("not_found") ||
-      code.includes("not found") ||
-      message.includes("nosuchkey") ||
-      message.includes("not_found") ||
-      message.includes("not found") ||
-      message.includes("object not found") ||
-      message.includes("does not exist") ||
-      message.includes('"url"');
-
-    if (isNotFound) {
-      return null;
-    }
-
-    throw new Error(
-      `Erro ao baixar arquivo ${path}: ${err.message || "falha desconhecida no storage"}`
-    );
+  if (query.error) {
+    throw new Error(formatTableError("listar formularios", query.error));
   }
 
-  const text = await downloaded.data.text();
+  return (query.data || []).map((row) => normalizeRecord(row as RecebimentoFormRecord));
+}
 
-  try {
-    return JSON.parse(text) as RecebimentoFormRecord;
-  } catch (error) {
-    throw new Error(
-      `JSON inválido no arquivo ${path}: ${
-        error instanceof Error ? error.message : "falha ao interpretar conteúdo"
-      }`
-    );
+async function deleteTableForm(unidadeId: string, formId: string) {
+  const deleted = await supabaseAdmin
+    .from(TABLE_NAME)
+    .delete()
+    .eq("unidade_id", unidadeId)
+    .eq("id", formId);
+
+  if (deleted.error) {
+    throw new Error(formatTableError("excluir formulario", deleted.error));
   }
+}
+
+async function autoFinalizeIfNeeded(record: RecebimentoFormRecord) {
+  if (!shouldAutoFinalizeRecebimento(record)) return record;
+  return autoFinalizeRecebimentoForm(record);
 }
 
 export async function getRecebimentoForm(unidadeId: string, formId: string) {
-  const path = getFormPath(unidadeId, formId);
-  let form = await readForm(path);
+  const form = await getTableForm(unidadeId, formId);
 
   if (form && isRecebimentoEmptyDraftExpired(form)) {
     await deleteRecebimentoForm(unidadeId, formId);
     return null;
   }
 
-  if (form && shouldAutoFinalizeRecebimento(form)) {
-    form = await autoFinalizeRecebimentoForm(form);
+  if (form) {
+    return autoFinalizeIfNeeded(form);
   }
 
-  return form;
+  return null;
 }
 
 export async function saveRecebimentoForm(record: RecebimentoFormRecord) {
-  if (!record?.id) {
-    throw new Error("Registro sem id");
-  }
-
-  if (!record?.unidade_id) {
-    throw new Error("Registro sem unidade_id");
-  }
-
-  await ensureBucket();
-
-  const path = getFormPath(record.unidade_id, record.id);
-  const json = JSON.stringify(record);
-  const fileBody = new Blob([json], { type: "application/json" });
-
-  const uploaded = await supabaseAdmin.storage.from(BUCKET_NAME).upload(path, fileBody, {
-    upsert: true,
-    contentType: "application/json",
-    cacheControl: "0",
-  });
-
-  if (uploaded.error) {
-    throw new Error(`Erro ao salvar arquivo ${path}: ${uploaded.error.message}`);
-  }
-
-  return { path };
+  const normalized = normalizeRecord(record);
+  await saveTableForm(normalized);
+  return { id: normalized.id };
 }
 
 export async function autoFinalizeRecebimentoForm(record: RecebimentoFormRecord) {
@@ -170,7 +133,7 @@ export async function autoFinalizeRecebimentoForm(record: RecebimentoFormRecord)
     new Date(record.updated_at).getTime() + RECEBIMENTO_AUTO_FINALIZE_TTL_MS
   ).toISOString();
 
-  const nextRecord: RecebimentoFormRecord = {
+  const nextRecord: RecebimentoFormRecord = normalizeRecord({
     ...record,
     finalized_at: finalizedAt,
     finalized_by: "system:auto-finalize",
@@ -178,99 +141,46 @@ export async function autoFinalizeRecebimentoForm(record: RecebimentoFormRecord)
     finalized_by_nome: "Finalizacao automatica",
     finalized_reason: "auto_inactive",
     signed_at: record.signed_at || finalizedAt,
-  };
+  });
 
   await saveRecebimentoForm(nextRecord);
   return nextRecord;
 }
 
 export async function deleteRecebimentoForm(unidadeId: string, formId: string) {
-  await ensureBucket();
-
-  const path = getFormPath(unidadeId, formId);
-  const removed = await supabaseAdmin.storage.from(BUCKET_NAME).remove([path]);
-
-  if (removed.error) {
-    throw new Error(`Erro ao excluir arquivo ${path}: ${removed.error.message}`);
-  }
+  await deleteTableForm(unidadeId, formId);
 }
 
 export async function cleanupExpiredRecebimentoDrafts(unidadeId: string) {
-  await ensureBucket();
+  const rows = await listTableForms(unidadeId);
+  let removed = 0;
 
-  const folder = getUnitFolder(unidadeId);
-  const listed = await supabaseAdmin.storage.from(BUCKET_NAME).list(folder, {
-    limit: 200,
-    offset: 0,
-    sortBy: { column: "updated_at", order: "desc" },
-  });
-
-  if (listed.error) {
-    throw new Error(`Erro ao listar formularios da unidade ${folder}: ${listed.error.message}`);
+  for (const row of rows) {
+    if (!isRecebimentoEmptyDraftExpired(row)) continue;
+    await deleteRecebimentoForm(unidadeId, row.id);
+    removed += 1;
   }
 
-  const files = (listed.data || []).filter((item) => item.name.endsWith(".json"));
-  const expiredPaths: string[] = [];
+  return { removed };
+}
 
-  await Promise.all(
-    files.map(async (file) => {
-      const fullPath = `${folder}/${file.name}`;
-      let form = await readForm(fullPath);
-      if (form && isRecebimentoEmptyDraftExpired(form)) {
-        expiredPaths.push(fullPath);
-        return;
-      }
+export async function finalizeInactiveRecebimentoForms(unidadeId: string) {
+  const rows = await listTableForms(unidadeId);
+  let finalized = 0;
 
-      if (form && shouldAutoFinalizeRecebimento(form)) {
-        form = await autoFinalizeRecebimentoForm(form);
-      }
-    })
-  );
-
-  if (expiredPaths.length === 0) {
-    return { removed: 0 };
+  for (const row of rows) {
+    if (!shouldAutoFinalizeRecebimento(row)) continue;
+    await autoFinalizeRecebimentoForm(row);
+    finalized += 1;
   }
 
-  const removed = await supabaseAdmin.storage.from(BUCKET_NAME).remove(expiredPaths);
-
-  if (removed.error) {
-    throw new Error(`Erro ao excluir rascunhos expirados da unidade ${folder}: ${removed.error.message}`);
-  }
-
-  return { removed: expiredPaths.length };
+  return { finalized };
 }
 
 export async function listRecebimentoForms(unidadeId: string) {
   await cleanupExpiredRecebimentoDrafts(unidadeId);
-  await ensureBucket();
+  await finalizeInactiveRecebimentoForms(unidadeId);
 
-  const folder = getUnitFolder(unidadeId);
-
-  const listed = await supabaseAdmin.storage.from(BUCKET_NAME).list(folder, {
-    limit: 200,
-    offset: 0,
-    sortBy: { column: "updated_at", order: "desc" },
-  });
-
-  if (listed.error) {
-    throw new Error(`Erro ao listar formularios da unidade ${folder}: ${listed.error.message}`);
-  }
-
-  const files = (listed.data || []).filter((item) => item.name.endsWith(".json"));
-
-  const rows = await Promise.all(
-    files.map(async (file) => {
-      const fullPath = `${folder}/${file.name}`;
-      let form = await readForm(fullPath);
-      if (!form) return null;
-      if (shouldAutoFinalizeRecebimento(form)) {
-        form = await autoFinalizeRecebimentoForm(form);
-      }
-      return form;
-    })
-  );
-
-  return rows
-    .filter((row): row is RecebimentoFormRecord => Boolean(row))
-    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+  const rows = await listTableForms(unidadeId);
+  return rows.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
 }

@@ -9,8 +9,8 @@
   const title = data.title || "BOT Turno";
   const options = {
     body: data.body || "",
-    icon: "/icons/icon_192x192.png",
-    badge: "/icons/favicon_32.png",
+    icon: "/icon.svg",
+    badge: "/icon.svg",
     data: { url: data.url || "/" },
   };
 

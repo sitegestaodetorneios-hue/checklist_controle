@@ -12,9 +12,9 @@ const APP_SHELL = [
   "/turno",
   "/pendencias",
   "/carros/saida",
-  "/icons/icon_192x192.png",
-  "/icons/icon_512x512.png",
+  "/icon.svg",
   "/manifest.webmanifest",
+  "/brand/checklist-mark.svg",
   "/brand/ativa.png",
 ];
 
@@ -92,8 +92,8 @@ self.addEventListener("push", (event) => {
   const title = data.title || "Checklist";
   const options = {
     body: data.body || "",
-    icon: "/icons/icon_192x192.png",
-    badge: "/icons/favicon_32.png",
+    icon: "/icon.svg",
+    badge: "/icon.svg",
     data: { url: data.url || "/" },
   };
 
