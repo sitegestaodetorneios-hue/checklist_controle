@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/currentUser";
 import {
   cleanupExpiredRecebimentoDrafts,
+  deleteRecebimentoForm,
   getRecebimentoForm,
   saveRecebimentoForm,
 } from "@/lib/recebimentoStorage";
@@ -68,6 +69,24 @@ export async function POST(req: Request) {
       existing = null;
     }
 
+    const rows = normalizeRows(body?.rows);
+    const progress = getRecebimentoProgress(rows);
+
+    if (progress.totalPreenchidas === 0) {
+      if (existing && !existing.finalized_at) {
+        await deleteRecebimentoForm(user.unidade_id, existing.id);
+      }
+
+      return NextResponse.json({
+        ok: true,
+        deleted: true,
+        form_id: existing?.id || formId,
+        next_form_id: crypto.randomUUID(),
+        progress,
+        status_label: "Formulario vazio excluido automaticamente",
+      });
+    }
+
     const record: RecebimentoFormRecord = {
       id: formId,
       unidade_id: user.unidade_id,
@@ -94,7 +113,7 @@ export async function POST(req: Request) {
         cleanText(body?.dataDocumento) ||
         existing?.data_documento ||
         "",
-      rows: normalizeRows(body?.rows),
+      rows,
       reopen_events: existing?.reopen_events || [],
       model_code: RECEBIMENTO_MODEL_CODE,
       model_version: RECEBIMENTO_MODEL_VERSION,
@@ -113,7 +132,6 @@ export async function POST(req: Request) {
     }
 
     await saveRecebimentoForm(record);
-    const progress = getRecebimentoProgress(record.rows);
 
     return NextResponse.json({
       ok: true,

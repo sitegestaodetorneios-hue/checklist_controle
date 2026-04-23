@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import {
-  isRecebimentoEmptyDraftExpired,
+  isRecebimentoRowsEmpty,
   RECEBIMENTO_AUTO_FINALIZE_TTL_MS,
   shouldAutoFinalizeRecebimento,
 } from "@/lib/recebimentoProgress";
@@ -106,7 +106,7 @@ async function autoFinalizeIfNeeded(record: RecebimentoFormRecord) {
 export async function getRecebimentoForm(unidadeId: string, formId: string) {
   const form = await getTableForm(unidadeId, formId);
 
-  if (form && isRecebimentoEmptyDraftExpired(form)) {
+  if (form && isRecebimentoRowsEmpty(form.rows)) {
     await deleteRecebimentoForm(unidadeId, formId);
     return null;
   }
@@ -156,7 +156,7 @@ export async function cleanupExpiredRecebimentoDrafts(unidadeId: string) {
   let removed = 0;
 
   for (const row of rows) {
-    if (!isRecebimentoEmptyDraftExpired(row)) continue;
+    if (!isRecebimentoRowsEmpty(row.rows)) continue;
     await deleteRecebimentoForm(unidadeId, row.id);
     removed += 1;
   }

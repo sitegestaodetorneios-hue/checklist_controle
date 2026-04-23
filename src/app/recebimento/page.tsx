@@ -173,7 +173,20 @@ function RecebimentoPageInner() {
         });
         const data = await safeJson(res);
         if (!alive) return;
-        if (!res.ok) throw new Error(data?.error || "Falha ao abrir formulario");
+        if (!res.ok) {
+          if (res.status === 404) {
+            const nextId = crypto.randomUUID();
+            setFormId(nextId);
+            setSavedForm(null);
+            setRows(createDefaultRows());
+            setSavingState("saved");
+            setSavingMessage("Formulario vazio removido automaticamente");
+            router.replace("/recebimento");
+            return;
+          }
+
+          throw new Error(data?.error || "Falha ao abrir formulario");
+        }
 
         const form = data.form as RecebimentoFormRecord;
         setFormId(form.id);
@@ -229,6 +242,20 @@ function RecebimentoPageInner() {
 
         const data = await safeJson(res);
         if (!res.ok) throw new Error(data?.error || "Falha ao salvar formulario");
+
+        if (data?.deleted) {
+          const nextId = String(data?.next_form_id || crypto.randomUUID());
+          setFormId(nextId);
+          setSavedForm(null);
+          setSavingState("saved");
+          setSavingMessage("Formulario vazio removido automaticamente");
+
+          if (searchParams.get("id")) {
+            router.replace("/recebimento");
+          }
+
+          return;
+        }
 
         const form = data.form as RecebimentoFormRecord;
         setFormId(form.id);

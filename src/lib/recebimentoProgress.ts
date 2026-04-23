@@ -24,6 +24,10 @@ export function isRecebimentoRowFilled(row: RecebimentoRow) {
   return ROW_FIELDS.some((field) => String(row?.[field] || "").trim() !== "");
 }
 
+export function isRecebimentoRowsEmpty(rows: RecebimentoRow[]) {
+  return rows.filter(isRecebimentoRowFilled).length === 0;
+}
+
 export function getRecebimentoProgress(rows: RecebimentoRow[]) {
   const totalLinhas = rows.length;
   const totalPreenchidas = rows.filter(isRecebimentoRowFilled).length;
